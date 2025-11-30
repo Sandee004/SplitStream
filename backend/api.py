@@ -1,4 +1,4 @@
-from .imports import FastAPI, CORSMiddleware, os, StaticFiles, HTTPException, FileResponse, datetime, timedelta, jwt, Session, Depends, status, IntegrityError, OAuth2PasswordBearer, HTTPBearer, CryptContext
+from .imports import FastAPI, CORSMiddleware, os, StaticFiles, HTTPException, FileResponse, datetime, timedelta, jwt, Session, Depends, status, IntegrityError, OAuth2PasswordBearer, HTTPBearer, CryptContext, ExpiredSignatureError, JWTError
 from . import models, schemas
 from .database import engine, SessionLocal
 from .config import build_frontend, DIST_DIR, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -40,6 +40,40 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        # 1. Decode the token
+        payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        
+        # 2. Extract the USERNAME (sub), not the email
+        username: str = payload.get("sub")
+        
+        if username is None:
+            raise credentials_exception
+            
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except JWTError:
+        raise credentials_exception
+
+    # 3. Query the database using the USERNAME field
+    user = db.query(models.User).filter(models.User.username == username).first()
+    
+    if user is None:
+        raise credentials_exception
+
+    return user
+
 pwd_cxt = CryptContext(schemes=['bcrypt'], deprecated="auto")
 
 
@@ -60,7 +94,8 @@ def setup(request: schemas.User, db: Session = Depends(get_db)):
     new_user = models.User(
         username=request.username,
         email=request.email,
-        password=hashed_password
+        password=hashed_password,
+        wallet_address=request.wallet_address,
     )
     
     try:
@@ -84,7 +119,8 @@ def setup(request: schemas.User, db: Session = Depends(get_db)):
         "access_token": access_token,
         "token_type": "bearer",
         "email": request.email,
-        "username": request.username
+        "username": request.username,
+        "wallet_address": request.wallet_address,
     }
 
 @app.post('/api/login', tags=['User'])
@@ -113,6 +149,36 @@ def login(request: schemas.Login, db: Session = Depends(get_db)):
     }
 
     return dashboard_data
+
+
+@app.get("/api/dashboard", tags=["User"])
+def dashboard(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # Fetch transactions (FastAPI/SQLAlchemy usually lazy loads the product info)
+    user_txs = db.query(models.Transactions).filter(
+        models.Transactions.user_id == current_user.id
+    ).all()
+
+    formatted_txs = []
+    for tx in user_txs:
+        formatted_txs.append({
+            "id": tx.id,
+            # MAGIC HAPPENS HERE: We access the related product table
+            "product": tx.product.product_name, 
+            "amount": tx.amount,
+            "date": tx.bought_at.strftime("%Y-%m-%d") if tx.bought_at else None
+        })
+
+    return {
+        "user": {
+            "username": current_user.username,
+            "email": current_user.email,
+            "wallet": current_user.wallet_address
+        },
+        "transactions": formatted_txs
+    }    
 
 
 # ------------------------------

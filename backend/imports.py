@@ -9,3 +9,5 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from fastapi.middleware.cors import CORSMiddleware
+import uuid
+import random
