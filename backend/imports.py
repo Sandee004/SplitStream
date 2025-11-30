@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse
 from passlib.context import CryptContext
 import os
 from jose import jwt, JWTError, ExpiredSignatureError
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
