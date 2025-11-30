@@ -9,7 +9,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 app = FastAPI(
     title="SplitStream API",
-    description="API for the backend of a wallet software",
+    description="API for a wallet software",
     version="1.0.0"
 )
 

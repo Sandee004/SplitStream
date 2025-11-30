@@ -3,10 +3,25 @@ import { useState, useEffect, useMemo } from "react";
 import { X, ChevronRight, Check, AlertCircle } from "lucide-react";
 import SplitInputRow from "./split-input-row";
 
+interface Split {
+  id: string;
+  wallet: string;
+  percentage: number;
+  isOwner?: boolean;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  description?: string;
+  splits: Split[];
+}
+
 interface ProductModalProps {
   isOpen: boolean;
   onClose: () => void;
-  product: any | null;
+  product: Product | null;
 }
 
 export default function ProductModal({

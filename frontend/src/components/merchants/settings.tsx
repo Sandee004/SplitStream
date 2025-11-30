@@ -141,3 +141,50 @@ const DashboardSettings = () => {
 export default DashboardSettings;
 */
 }
+
+export default function SettingsPage() {
+  return (
+    <div className="space-y-6">
+      <h1 className="text-xl font-bold text-[#1a3a2a]">Settings</h1>
+
+      {/* Profile Settings */}
+      <div className="bg-white p-6 border border-[#1a3a2a]/10 space-y-4">
+        <h2 className="font-semibold text-[#1a3a2a]">Profile Details</h2>
+
+        <input
+          className="w-full p-2 border border-[#1a3a2a]/20"
+          placeholder="Name"
+        />
+        <input
+          className="w-full p-2 border border-[#1a3a2a]/20"
+          placeholder="Email"
+        />
+
+        <button className="px-4 py-2 bg-[#1a3a2a] text-white text-sm">
+          Save Changes
+        </button>
+      </div>
+
+      {/* Wallet Settings */}
+      <div className="bg-white p-6 border border-[#1a3a2a]/10 space-y-3">
+        <h2 className="font-semibold text-[#1a3a2a]">Wallet Address</h2>
+        <input
+          className="w-full p-2 border border-[#1a3a2a]/20"
+          placeholder="0x..."
+        />
+        <button className="px-4 py-2 bg-[#1a3a2a] text-white text-sm">
+          Update Wallet
+        </button>
+      </div>
+
+      {/* Danger Zone */}
+      <div className="bg-white p-6 border border-red-400/30 space-y-3">
+        <h2 className="font-semibold text-red-700">Danger Zone</h2>
+
+        <button className="px-4 py-2 bg-red-700 text-white text-sm">
+          Delete Account
+        </button>
+      </div>
+    </div>
+  );
+}
