@@ -151,35 +151,56 @@ def login(request: schemas.Login, db: Session = Depends(get_db)):
     return dashboard_data
 
 
-@app.get("/api/dashboard", tags=["User"])
+@app.get("/api/dashboard", tags=["Merchant"])
 def dashboard(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Fetch transactions (FastAPI/SQLAlchemy usually lazy loads the product info)
-    user_txs = db.query(models.Transactions).filter(
-        models.Transactions.user_id == current_user.id
-    ).all()
+    try:
+        my_products = db.query(models.Products).filter(
+            models.Products.merchant_id == current_user.id
+        ).all()
 
-    formatted_txs = []
-    for tx in user_txs:
-        formatted_txs.append({
-            "id": tx.id,
-            # MAGIC HAPPENS HERE: We access the related product table
-            "product": tx.product.product_name, 
-            "amount": tx.amount,
-            "date": tx.bought_at.strftime("%Y-%m-%d") if tx.bought_at else None
-        })
+        product_ids = [p.id for p in my_products]
 
-    return {
-        "user": {
-            "username": current_user.username,
-            "email": current_user.email,
-            "wallet": current_user.wallet_address
-        },
-        "transactions": formatted_txs
-    }    
+        my_sales = db.query(models.Transactions).filter(
+            models.Transactions.product_id.in_(product_ids)
+        ).order_by(models.Transactions.bought_at.desc()).all()
 
+        total_earnings = sum(sale.amount for sale in my_sales)
+        total_sales_count = len(my_sales)
+
+        sales_history = []
+        for sale in my_sales:
+            sales_history.append({
+                "tx_hash": sale.tx_hash,
+                "item_sold": sale.product.product_name,
+                "earned": sale.amount,
+                "date": sale.bought_at.strftime("%Y-%m-%d")
+            })
+
+        inventory_list = [
+            {"id": p.id, "name": p.product_name, "price": p.price} 
+            for p in my_products
+        ]
+
+        return {
+            "merchant_profile": {
+                "username": current_user.username,
+                "wallet": current_user.wallet_address
+            },
+            "stats": {
+                "total_revenue": total_earnings,
+                "items_sold": total_sales_count
+            },
+            "inventory": inventory_list,
+            "recent_sales": sales_history
+        }
+
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Dashboard error")
+    
 
 # ------------------------------
 # Static Files & React Routing
