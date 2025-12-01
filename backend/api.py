@@ -1,4 +1,4 @@
-from .imports import FastAPI, CORSMiddleware, os, StaticFiles, HTTPException, FileResponse, datetime, timedelta, jwt, Session, Depends, status, IntegrityError, OAuth2PasswordBearer, HTTPBearer, CryptContext, ExpiredSignatureError, JWTError
+from .imports import FastAPI, CORSMiddleware, os, StaticFiles, HTTPException, FileResponse, datetime, timedelta, jwt, Session, Depends, status, IntegrityError, OAuth2PasswordBearer, HTTPBearer, CryptContext, Security, ExpiredSignatureError, JWTError, SQLAlchemyError
 from . import models, schemas
 from .database import engine, SessionLocal
 from .config import build_frontend, DIST_DIR, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -48,10 +48,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
 
     try:
-        # 1. Decode the token
-        payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])
-        
-        # 2. Extract the USERNAME (sub), not the email
+        payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM]) 
         username: str = payload.get("sub")
         
         if username is None:
@@ -122,6 +119,7 @@ def setup(request: schemas.User, db: Session = Depends(get_db)):
         "username": request.username,
         "wallet_address": request.wallet_address,
     }
+
 
 @app.post('/api/login', tags=['User'])
 def login(request: schemas.Login, db: Session = Depends(get_db)):
@@ -201,6 +199,109 @@ def dashboard(
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail="Dashboard error")
     
+
+@app.post("/api/add-product")
+def add_product(request: schemas.AddProduct,
+    db: Session = Depends(get_db),
+    current_user: models.User = Security(get_current_user)):
+    
+    if not request.product_name or not request.price:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="All fields are required."
+        )
+    
+    if sum(split.percentage for split in request.splits) != 100:
+        raise HTTPException(
+            status_code=400,
+            detail="Total split percentage must equal 100"
+        )
+    
+    try:
+        new_product = models.Products(
+            product_name=request.product_name,
+            price=request.price,
+            merchant_id=current_user.id
+        )
+        db.add(new_product)
+        db.flush()
+
+        for split in request.splits:
+            db.add(models.ProductSplits(
+                wallet_address=split.wallet_address,
+                percentage=split.percentage,
+                product_id=new_product.id
+            ))
+
+        db.commit()
+        db.refresh(new_product)
+
+        return {
+            "message": "Product created successfully",
+            "product": new_product
+        }
+
+    except Exception as e:
+        db.rollback()
+        print(e)
+        raise HTTPException(500, "Failed to create product")
+
+
+@app.put("/api/update-product/{product_id}", response_model=schemas.AddProduct)
+def update_product(
+    product_id: int,
+    request: schemas.AddProduct,
+    db: Session = Depends(get_db),
+    current_user: models.User = Security(get_current_user)
+):
+    product = db.query(models.Products).filter(
+        models.Products.id == product_id,
+        models.Products.merchant_id == current_user.id
+    ).first()
+
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    try:
+        product.product_name = request.product_name
+        product.price = request.price
+        product.splits = request.splits
+        db.commit()
+        db.refresh(product)
+        return product
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update product"
+        ) from e
+
+
+@app.delete("/api/delete-product/{product_id}")
+def delete_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Security(get_current_user)
+):
+    product = db.query(models.Products).filter(
+        models.Products.id == product_id,
+        models.Products.merchant_id == current_user.id
+    ).first()
+
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    try:
+        db.delete(product)
+        db.commit()
+        return {"detail": "Product deleted successfully"}
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete product"
+        ) from e
+
 
 # ------------------------------
 # Static Files & React Routing

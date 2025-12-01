@@ -20,8 +20,19 @@ class Products(Base):
     price = Column(Integer, nullable=False)
     merchant_id = Column(Integer, ForeignKey("users.id"))
     merchant = relationship("User", back_populates="products")
-
+    
+    splits = relationship("ProductSplits", back_populates="product", cascade="all, delete")
     sales = relationship("Transactions", back_populates="product")
+
+class ProductSplits(Base):
+    __tablename__ = "product_splits"
+
+    id = Column(Integer, primary_key=True, index=True)
+    wallet_address = Column(String, nullable=False)
+    percentage = Column(Integer, nullable=False)
+
+    product_id = Column(Integer, ForeignKey("products.id"))
+    product = relationship("Products", back_populates="splits")
 
 class Transactions(Base):
     __tablename__ = "transactions"

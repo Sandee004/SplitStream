@@ -1,12 +1,12 @@
-"use client";
-
-import { useState } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, Zap, TrendingUp, Package } from "lucide-react";
 import DashboardLayout from "./dashboard-layout";
 import TransactionTable from "./transaction-table";
 import ProductCard from "./product-card";
 import ProductModal from "./product-modal";
+import { useNavigate } from "react-router-dom";
 
 interface Split {
   id: string;
@@ -32,12 +32,74 @@ interface Transaction {
 }
 
 export default function DashboardPage() {
-  // TEMP MOCKS (replace with store or backend later)
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
-  const [transactions] = useState<Transaction[]>([]);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  useEffect(() => {
+    const FillDashboard = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          alert("No token found. Please login again.");
+          navigate("/login");
+          return;
+        }
+
+        const res = await fetch("http://localhost:8000/api/dashboard", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error("Unauthorized");
+        }
+        console.log("Dashboard status:", res.status);
+        const data = await res.json();
+        console.log("Dashboard Data:", data);
+
+        // ===== MAP BACKEND → UI =====
+        if (data.inventory) {
+          setProducts(
+            data.inventory.map((item: any) => ({
+              id: item.id.toString(),
+              name: item.name,
+              price: item.price,
+              description: "",
+              splits: [],
+            }))
+          );
+        }
+
+        if (data.recent_sales) {
+          setTransactions(
+            data.recent_sales.map((sale: any) => ({
+              id: sale.tx_hash,
+              txHash: sale.tx_hash,
+              productName: sale.item_sold,
+              amount: sale.earned,
+              timestamp: new Date(sale.date),
+            }))
+          );
+        }
+
+        if (data.stats) {
+          setTotalRevenue(data.stats.total_revenue);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    FillDashboard();
+  }, [navigate]);
 
   // ===== EDIT HANDLERS =====
   const handleEdit = (product: Product) => {
@@ -53,8 +115,6 @@ export default function DashboardPage() {
   const deleteProduct = (id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };
-
-  const totalRevenue = transactions.reduce((sum, tx) => sum + tx.amount, 0);
 
   return (
     <DashboardLayout>

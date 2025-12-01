@@ -49,6 +49,12 @@ export default function SetupPage() {
       });
 
       if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+
+      // Save token
+      if (data.access_token) {
+        localStorage.setItem("token", data.access_token);
+      }
       navigate("/dashboard");
     } catch {
       alert("Error setting up account");

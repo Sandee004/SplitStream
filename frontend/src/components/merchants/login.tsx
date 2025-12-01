@@ -33,6 +33,14 @@ export default function LoginPage() {
       });
 
       if (!res.ok) throw new Error("Login failed");
+      const data = await res.json();
+      console.log("Login data: ", data);
+
+      // Save token
+      if (data.access_token) {
+        localStorage.setItem("token", data.access_token);
+        console.log("Saved token");
+      }
 
       navigate("/dashboard");
     } catch {
@@ -148,14 +156,14 @@ export default function LoginPage() {
               Login
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
-            {/* Already have an account */}
+            {/* Don't have an account */}
             <p className="text-center text-sm mt-4 font-mono text-emerald-800/70">
               Don't have an account?{" "}
               <Link
-                to="/login"
+                to="/setup"
                 className="text-lime-400 font-semibold hover:underline"
               >
-                Login
+                Create one
               </Link>
             </p>
           </form>

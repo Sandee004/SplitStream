@@ -128,16 +128,49 @@ export default function ProductModal({
     setStep(2);
   };
 
-  const handleDeploy = () => {
+  const handleDeploy = async () => {
     if (!isValidTotal) return;
+
     const productData = {
-      name: name.trim(),
+      product_name: name.trim(),
       price: Number.parseFloat(price),
       splits,
     };
-    if (product) updateProduct(product.id, productData);
-    else addProduct(productData);
-    onClose();
+
+    const token = localStorage.getItem("token"); // get token
+
+    try {
+      const res = await fetch("http://localhost:8000/api/add-product", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // send token
+        },
+        body: JSON.stringify(productData),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Failed to add product");
+      }
+
+      const savedProduct = await res.json();
+      console.log("Product saved:", savedProduct);
+
+      // Update the dashboard state immediately
+      if (product) {
+        // If editing an existing product
+        updateProduct(product.id, savedProduct);
+      } else {
+        // If adding a new product
+        addProduct(savedProduct);
+      }
+
+      onClose(); // close the modal
+    } catch (err: any) {
+      console.error("Error deploying product:", err);
+      alert(err.message || "Something went wrong");
+    }
   };
 
   if (!isOpen) return null;
