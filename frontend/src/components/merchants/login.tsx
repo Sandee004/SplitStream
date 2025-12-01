@@ -1,40 +1,24 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from "react";
-import { ArrowRight, User, Wallet, Mail, Lock } from "lucide-react";
+import { ArrowRight, User, Lock } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
-export default function SetupPage() {
+export default function LoginPage() {
   const navigate = useNavigate();
 
   const [username, setUsername] = useState("");
-  const [wallet, setWallet] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [autoWallet, setAutoWallet] = useState(false);
-
   const [errors, setErrors] = useState<{
     username?: string;
-    wallet?: string;
-    email?: string;
     password?: string;
   }>({});
-
-  const generateWallet = () => {
-    const rand = "0x" + Math.random().toString(16).substring(2, 12);
-    setWallet(rand);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const newErrors: any = {};
-
     if (!username.trim()) newErrors.username = "Required";
-    if (!email.trim()) newErrors.email = "Required";
     if (!password.trim()) newErrors.password = "Required";
-
-    if (!wallet.trim()) newErrors.wallet = "Required";
-    else if (wallet.length < 10) newErrors.wallet = "Invalid";
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -42,16 +26,17 @@ export default function SetupPage() {
     }
 
     try {
-      const res = await fetch("http://localhost:8000/api/setup", {
+      const res = await fetch("http://localhost:8000/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password, wallet }),
+        body: JSON.stringify({ username, password }),
       });
 
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) throw new Error("Login failed");
+
       navigate("/dashboard");
     } catch {
-      alert("Error setting up account");
+      alert("Invalid username or password");
     }
   };
 
@@ -81,16 +66,15 @@ export default function SetupPage() {
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 bg-lime-400" />
               <span className="text-xs font-mono uppercase tracking-wider text-emerald-800/60">
-                Initialization
+                Login
               </span>
             </div>
 
             <h1 className="text-2xl font-bold text-emerald-800">
-              Establish Origin Identity
+              Welcome Back
             </h1>
             <p className="text-sm text-emerald-800/60 mt-2">
-              Configure your merchant profile to begin receiving programmable
-              payments.
+              Enter your credentials to access your dashboard.
             </p>
           </div>
 
@@ -124,32 +108,6 @@ export default function SetupPage() {
               )}
             </div>
 
-            {/* Email */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-medium mb-2 text-emerald-800">
-                <Mail className="w-4 h-4" /> Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  setErrors((p) => ({ ...p, email: undefined }));
-                }}
-                placeholder="you@example.com"
-                className={`
-                  w-full px-4 py-3 bg-gray-100 text-emerald-800 
-                  border-2 transition-colors 
-                  ${errors.email ? "border-red-600" : "border-emerald-800/30"}
-                `}
-              />
-              {errors.email && (
-                <p className="text-xs mt-1 font-mono text-red-600">
-                  {errors.email}
-                </p>
-              )}
-            </div>
-
             {/* Password */}
             <div>
               <label className="flex items-center gap-2 text-sm font-medium mb-2 text-emerald-800">
@@ -178,61 +136,21 @@ export default function SetupPage() {
               )}
             </div>
 
-            {/* Wallet */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-medium mb-2 text-emerald-800">
-                <Wallet className="w-4 h-4" /> Default Payout Wallet
-              </label>
-
-              <input
-                type="text"
-                value={wallet}
-                onChange={(e) => {
-                  setWallet(e.target.value);
-                  setErrors((p) => ({ ...p, wallet: undefined }));
-                }}
-                placeholder="0x..."
-                disabled={autoWallet}
-                className={`
-                  w-full px-4 py-3 bg-gray-100 text-emerald-800 font-mono text-sm
-                  border-2 transition-colors disabled:opacity-60 
-                  ${errors.wallet ? "border-red-600" : "border-emerald-800/30"}
-                `}
-              />
-
-              {errors.wallet && (
-                <p className="text-xs mt-1 font-mono text-red-600">
-                  {errors.wallet}
-                </p>
-              )}
-
-              <div className="flex items-center gap-2 mt-3">
-                <input
-                  type="checkbox"
-                  checked={autoWallet}
-                  onChange={(e) => {
-                    setAutoWallet(e.target.checked);
-                    if (e.target.checked) generateWallet();
-                  }}
-                />
-                <span className="text-xs font-mono text-emerald-800/60">
-                  Generate a new wallet automatically
-                </span>
-              </div>
-            </div>
-
             {/* Submit */}
             <button
               type="submit"
-              className="w-full group relative flex items-center justify-center gap-3 py-4 bg-lime-400 border-2 border-emerald-800 text-emerald-900 font-semibold transition-all"
+              className="
+                w-full group relative flex items-center justify-center gap-3 py-4
+                bg-lime-400 border-2 border-emerald-800 text-emerald-900 
+                font-semibold transition-all
+              "
             >
-              Create Account
+              Login
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
-
             {/* Already have an account */}
             <p className="text-center text-sm mt-4 font-mono text-emerald-800/70">
-              Already have an account?{" "}
+              Don't have an account?{" "}
               <Link
                 to="/login"
                 className="text-lime-400 font-semibold hover:underline"
