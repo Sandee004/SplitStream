@@ -1,10 +1,8 @@
-"use client";
-
 import { X, Lock } from "lucide-react";
 
 interface Split {
   id: string;
-  wallet: string;
+  wallet_address: string;
   percentage: number;
   isOwner?: boolean;
 }
@@ -61,14 +59,14 @@ export default function SplitInputRow({
             <div className="flex items-center gap-2 px-3 py-2 bg-[#1a3a2a]/10 border border-[#1a3a2a]/20">
               <Lock className="w-3 h-3 text-[#1a3a2a]/50" />
               <span className="font-mono text-sm text-[#1a3a2a] truncate">
-                {split.wallet}
+                {split.wallet_address}
               </span>
             </div>
           ) : (
             <input
               type="text"
-              value={split.wallet}
-              onChange={(e) => onUpdate({ wallet: e.target.value })}
+              value={split.wallet_address}
+              onChange={(e) => onUpdate({ wallet_address: e.target.value })}
               placeholder="0x..."
               className="w-full px-3 py-2 bg-white border border-[#1a3a2a]/20 focus:border-[#1a3a2a] focus:outline-none transition-colors font-mono text-sm text-[#1a3a2a] placeholder:text-[#1a3a2a]/30"
             />

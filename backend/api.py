@@ -1,4 +1,4 @@
-from .imports import FastAPI, CORSMiddleware, os, StaticFiles, HTTPException, FileResponse, datetime, timedelta, jwt, Session, Depends, status, IntegrityError, OAuth2PasswordBearer, HTTPBearer, CryptContext, Security, ExpiredSignatureError, JWTError, SQLAlchemyError
+from .imports import FastAPI, CORSMiddleware, os, StaticFiles, HTTPException, FileResponse, datetime, timedelta, jwt, Session, Depends, status, IntegrityError, OAuth2PasswordBearer, HTTPBearer, CryptContext, Security, ExpiredSignatureError, JWTError, SQLAlchemyError, List
 from . import models, schemas
 from .database import engine, SessionLocal
 from .config import build_frontend, DIST_DIR, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -73,10 +73,10 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 
 pwd_cxt = CryptContext(schemes=['bcrypt'], deprecated="auto")
 
-
 @app.post("/api/setup", tags=["User"], response_model=schemas.UserResponse)
 def setup(request: schemas.User, db: Session = Depends(get_db)):
-    if db.query(models.User).filter(models.User.username == request.username).first():
+    username = request.username.lower()
+    if db.query(models.User).filter(models.User.username == username).first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already taken"
@@ -89,10 +89,10 @@ def setup(request: schemas.User, db: Session = Depends(get_db)):
 
     hashed_password = pwd_cxt.hash(request.password)
     new_user = models.User(
-        username=request.username,
+        username=username,
         email=request.email,
         password=hashed_password,
-        wallet_address=request.wallet_address,
+        wallet_address=request.walletAddress,
     )
     
     try:
@@ -109,21 +109,22 @@ def setup(request: schemas.User, db: Session = Depends(get_db)):
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": request.username}, expires_delta=access_token_expires
+        data={"sub": username}, expires_delta=access_token_expires
     )
 
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "email": request.email,
-        "username": request.username,
-        "wallet_address": request.wallet_address,
+        "username": username,
+        "wallet_address": request.walletAddress,
     }
 
 
 @app.post('/api/login', tags=['User'])
 def login(request: schemas.Login, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.username == request.username).first()
+    username = request.username.lower()
+    user = db.query(models.User).filter(models.User.username == username).first()
 
     invalid_credentials = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -177,10 +178,24 @@ def dashboard(
                 "date": sale.bought_at.strftime("%Y-%m-%d")
             })
 
-        inventory_list = [
-            {"id": p.id, "name": p.product_name, "price": p.price} 
-            for p in my_products
-        ]
+        inventory_list = []
+        for p in my_products:
+            product_splits = [
+                {
+                    "id": s.id,
+                    "wallet_address": s.wallet_address,
+                    "percentage": s.percentage,
+                    "isOwner": s.wallet_address == current_user.wallet_address
+                } 
+                for s in p.splits
+            ]
+
+            inventory_list.append({
+                "id": p.id,
+                "name": p.product_name,
+                "price": p.price,
+                "splits": product_splits
+            })
 
         return {
             "merchant_profile": {
@@ -200,22 +215,18 @@ def dashboard(
         raise HTTPException(status_code=500, detail="Dashboard error")
     
 
-@app.post("/api/add-product")
+@app.post("/api/add-product", response_model=schemas.ProductResponse)
 def add_product(request: schemas.AddProduct,
     db: Session = Depends(get_db),
     current_user: models.User = Security(get_current_user)):
     
     if not request.product_name or not request.price:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="All fields are required."
-        )
+        raise HTTPException(status_code=400, detail="All fields are required.")
     
-    if sum(split.percentage for split in request.splits) != 100:
-        raise HTTPException(
-            status_code=400,
-            detail="Total split percentage must equal 100"
-        )
+    # Validation logic
+    current_total = sum(split.percentage for split in request.splits)
+    if current_total != 100:
+        raise HTTPException(status_code=400, detail=f"Total split percentage must equal 100 (got {current_total})")
     
     try:
         new_product = models.Products(
@@ -224,7 +235,7 @@ def add_product(request: schemas.AddProduct,
             merchant_id=current_user.id
         )
         db.add(new_product)
-        db.flush()
+        db.flush() # Flush to get new_product.id
 
         for split in request.splits:
             db.add(models.ProductSplits(
@@ -235,25 +246,22 @@ def add_product(request: schemas.AddProduct,
 
         db.commit()
         db.refresh(new_product)
-
-        return {
-            "message": "Product created successfully",
-            "product": new_product
-        }
+        return new_product
 
     except Exception as e:
         db.rollback()
-        print(e)
+        print(f"Error: {e}")
         raise HTTPException(500, "Failed to create product")
 
 
-@app.put("/api/update-product/{product_id}", response_model=schemas.AddProduct)
+@app.put("/api/update-product/{product_id}", response_model=schemas.ProductResponse)
 def update_product(
     product_id: int,
     request: schemas.AddProduct,
     db: Session = Depends(get_db),
     current_user: models.User = Security(get_current_user)
 ):
+    # 1. Fetch Product
     product = db.query(models.Products).filter(
         models.Products.id == product_id,
         models.Products.merchant_id == current_user.id
@@ -262,19 +270,49 @@ def update_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
+    # 2. Update Basic Info
+    product.product_name = request.product_name
+    product.price = request.price
+
+    # =========================================================
+    #  SMART UPDATE LOGIC
+    # =========================================================
+    
+    # A. Get all existing splits from DB
+    existing_splits = db.query(models.ProductSplits).filter(
+        models.ProductSplits.product_id == product.id
+    ).all()
+    
+    # Map existing splits by Wallet Address (or ID) for easy lookup
+    # Using wallet_address as unique key here, but ID is safer if frontend sends it
+    existing_map = {split.wallet_address: split for split in existing_splits}
+    
+    incoming_wallets = [s.wallet_address for s in request.splits]
+
+    for split in existing_splits:
+        if split.wallet_address not in incoming_wallets:
+            db.delete(split)
+
+    for split_data in request.splits:
+        if split_data.wallet_address in existing_map:
+            existing_record = existing_map[split_data.wallet_address]
+            existing_record.percentage = split_data.percentage
+        else:
+            # CREATE new record
+            new_split = models.ProductSplits(
+                wallet_address=split_data.wallet_address,
+                percentage=split_data.percentage,
+                product_id=product.id
+            )
+            db.add(new_split)
+
     try:
-        product.product_name = request.product_name
-        product.price = request.price
-        product.splits = request.splits
         db.commit()
         db.refresh(product)
         return product
-    except SQLAlchemyError as e:
+    except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update product"
-        ) from e
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.delete("/api/delete-product/{product_id}")

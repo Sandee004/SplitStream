@@ -3,14 +3,14 @@ import { Edit2, Users, Trash2 } from "lucide-react";
 
 interface Split {
   id: string;
-  wallet: string;
+  wallet_address: string;
   percentage: number;
   isOwner?: boolean;
 }
 
 interface Product {
   id: string;
-  name: string;
+  product_name: string;
   price: number;
   description?: string;
   splits: Split[]; // must exist
@@ -41,8 +41,10 @@ const ProductCard = ({
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h4 className="font-semibold text-foreground">{product.name}</h4>
-          <p className="font-mono text-lg font-bold text-accent mt-1">
+          <h4 className="font-bold text-lg text-foreground">
+            {product.product_name}
+          </h4>
+          <p className="font-mono font-semibold text-accent mt-1">
             {product.price.toLocaleString()} MNEE
           </p>
         </div>

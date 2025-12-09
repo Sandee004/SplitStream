@@ -1,23 +1,26 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Plus, Zap, TrendingUp, Package } from "lucide-react";
+import { Plus, Zap, TrendingUp, Package, Loader2 } from "lucide-react";
 import DashboardLayout from "./dashboard-layout";
 import TransactionTable from "./transaction-table";
 import ProductCard from "./product-card";
 import ProductModal from "./product-modal";
 import { useNavigate } from "react-router-dom";
 
+// =============================================================
+// INTERFACES
+// =============================================================
 interface Split {
   id: string;
-  wallet: string;
+  wallet_address: string;
   percentage: number;
   isOwner?: boolean;
 }
 
 interface Product {
   id: string;
-  name: string;
+  product_name: string;
   price: number;
   description?: string;
   splits: Split[];
@@ -33,75 +36,105 @@ interface Transaction {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+
+  // =============================================================
+  // STATE
+  // =============================================================
+  const [isLoading, setIsLoading] = useState(true); // <--- Loading State
   const [products, setProducts] = useState<Product[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [merchantWallet, setMerchantWallet] = useState<string>("");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
-  useEffect(() => {
-    const FillDashboard = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          alert("No token found. Please login again.");
-          navigate("/login");
-          return;
-        }
+  // =============================================================
+  // FETCH FUNCTION (REUSABLE)
+  // =============================================================
+  const loadDashboardData = useCallback(async () => {
+    try {
+      setIsLoading(true); // Start Spinner
 
-        const res = await fetch("http://localhost:8000/api/dashboard", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) {
-          throw new Error("Unauthorized");
-        }
-        console.log("Dashboard status:", res.status);
-        const data = await res.json();
-        console.log("Dashboard Data:", data);
-
-        // ===== MAP BACKEND → UI =====
-        if (data.inventory) {
-          setProducts(
-            data.inventory.map((item: any) => ({
-              id: item.id.toString(),
-              name: item.name,
-              price: item.price,
-              description: "",
-              splits: [],
-            }))
-          );
-        }
-
-        if (data.recent_sales) {
-          setTransactions(
-            data.recent_sales.map((sale: any) => ({
-              id: sale.tx_hash,
-              txHash: sale.tx_hash,
-              productName: sale.item_sold,
-              amount: sale.earned,
-              timestamp: new Date(sale.date),
-            }))
-          );
-        }
-
-        if (data.stats) {
-          setTotalRevenue(data.stats.total_revenue);
-        }
-      } catch (err) {
-        console.error(err);
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/login");
+        return;
       }
-    };
 
-    FillDashboard();
+      const res = await fetch("http://localhost:8000/api/dashboard", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert("Session expired. Please login again");
+          navigate("/login");
+        }
+        throw new Error("Can't load dashboard data");
+      }
+
+      const data = await res.json();
+
+      if (data.inventory) {
+        setProducts(
+          data.inventory.map((item: any) => ({
+            id: item.id.toString(),
+            product_name: item.name,
+            price: item.price,
+            description: "",
+            // Ensure splits are mapped correctly from backend
+            splits: item.splits
+              ? item.splits.map((s: any) => ({
+                  id: s.id?.toString() || crypto.randomUUID(),
+                  wallet_address: s.wallet_address,
+                  percentage: s.percentage,
+                  isOwner: s.is_owner || false,
+                }))
+              : [],
+          }))
+        );
+      }
+
+      // 2. PROCESS TRANSACTIONS
+      if (data.recent_sales) {
+        setTransactions(
+          data.recent_sales.map((sale: any) => ({
+            id: sale.tx_hash,
+            txHash: sale.tx_hash,
+            productName: sale.item_sold,
+            amount: sale.earned,
+            timestamp: new Date(sale.date),
+          }))
+        );
+      }
+
+      // 3. PROCESS STATS
+      if (data.stats) {
+        setTotalRevenue(data.stats.total_revenue);
+      }
+      if (data.merchant_profile) {
+        setMerchantWallet(data.merchant_profile.wallet);
+      }
+    } catch (err) {
+      console.error("Dashboard Fetch Error:", err);
+    } finally {
+      setIsLoading(false); // Stop Spinner
+    }
   }, [navigate]);
 
-  // ===== EDIT HANDLERS =====
+  // Initial Load
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  // =============================================================
+  // HANDLERS
+  // =============================================================
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setIsModalOpen(true);
@@ -112,12 +145,39 @@ export default function DashboardPage() {
     setIsModalOpen(false);
   };
 
-  const deleteProduct = (id: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+  // We delete via API then refresh to be safe
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this stream?")) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(`http://localhost:8000/api/delete-product/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      loadDashboardData(); // Refresh list after delete
+    } catch (error) {
+      console.error("Failed to delete", error);
+    }
   };
 
+  // =============================================================
+  // RENDER
+  // =============================================================
   return (
     <DashboardLayout>
+      {/* LOADING OVERLAY */}
+      {isLoading && (
+        <div className="fixed inset-0 z-40 bg-background/50 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-card border border-border p-4 shadow-xl flex items-center gap-3">
+            <Loader2 className="w-6 h-6 text-accent animate-spin" />
+            <span className="font-mono text-sm text-foreground">
+              Updating Dashboard...
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-8">
         {/* ========================= STATS ========================= */}
         <motion.div
@@ -172,7 +232,7 @@ export default function DashboardPage() {
           </div>
         </motion.div>
 
-        {/* ====================== CTA: ADD STREAM ====================== */}
+        {/* ====================== ADD STREAM CTA ====================== */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -181,7 +241,7 @@ export default function DashboardPage() {
           <button
             onClick={() => setIsModalOpen(true)}
             className="w-full border-2 border-dashed border-accent/50 bg-accent/5 
-                       hover:bg-accent/10 hover:border-accent transition-all p-8 md:p-12 group"
+                        hover:bg-accent/10 hover:border-accent transition-all p-8 md:p-12 group"
           >
             <div className="flex flex-col items-center gap-4">
               <div className="w-16 h-16 border-2 border-accent bg-accent/10 flex items-center justify-center group-hover:glow-accent transition-all">
@@ -225,7 +285,7 @@ export default function DashboardPage() {
                   product={product}
                   index={index}
                   onEdit={handleEdit}
-                  onDelete={deleteProduct}
+                  onDelete={handleDelete}
                 />
               ))}
             </div>
@@ -242,11 +302,14 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
-      {/* ==================== PRODUCT MODAL ==================== */}
+      {/* PRODUCT MODAL */}
       <ProductModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         product={editingProduct}
+        merchantWallet={merchantWallet}
+        // 👇 This triggers the refresh/spinner when done
+        onSuccess={loadDashboardData}
       />
     </DashboardLayout>
   );

@@ -6,7 +6,8 @@ from typing import List, Optional
 class User(BaseModel):
     username: str
     email: str
-    wallet_address: str
+    password: str
+    walletAddress: str
 
 class Login(BaseModel):
     username: str
@@ -22,7 +23,25 @@ class SplitSchema(BaseModel):
     wallet_address: str
     percentage: int
 
+class SplitResponse(SplitSchema):
+    id: int
+    wallet_address: str
+    percentage: int
+    
+    class Config:
+        from_attributes = True
+
 class AddProduct(BaseModel):
     product_name: str
-    price: int
+    price: float
     splits: list[SplitSchema]
+
+class ProductResponse(BaseModel):
+    id: int
+    product_name: str
+    price: float
+    merchant_id: int
+    splits: List[SplitResponse]
+
+    class Config:
+        from_attributes = True

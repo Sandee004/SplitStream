@@ -5,27 +5,30 @@ import { Link, useNavigate } from "react-router-dom";
 
 export default function SetupPage() {
   const navigate = useNavigate();
-
   const [username, setUsername] = useState("");
-  const [wallet, setWallet] = useState("");
+  const [walletAddress, setWalletAddress] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [autoWallet, setAutoWallet] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [errors, setErrors] = useState<{
     username?: string;
-    wallet?: string;
+    walletAddress?: string;
     email?: string;
     password?: string;
   }>({});
 
   const generateWallet = () => {
     const rand = "0x" + Math.random().toString(16).substring(2, 12);
-    setWallet(rand);
+    setWalletAddress(rand);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (loading) return;
+    setLoading(true);
 
     const newErrors: any = {};
 
@@ -33,11 +36,12 @@ export default function SetupPage() {
     if (!email.trim()) newErrors.email = "Required";
     if (!password.trim()) newErrors.password = "Required";
 
-    if (!wallet.trim()) newErrors.wallet = "Required";
-    else if (wallet.length < 10) newErrors.wallet = "Invalid";
+    if (!walletAddress.trim()) newErrors.walletAddress = "Required";
+    else if (walletAddress.length < 10) newErrors.walletAddress = "Invalid";
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      setLoading(false);
       return;
     }
 
@@ -45,19 +49,22 @@ export default function SetupPage() {
       const res = await fetch("http://localhost:8000/api/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password, wallet }),
+        body: JSON.stringify({ username, email, password, walletAddress }),
       });
 
       if (!res.ok) throw new Error("Failed");
+
       const data = await res.json();
 
-      // Save token
       if (data.access_token) {
         localStorage.setItem("token", data.access_token);
       }
+
       navigate("/dashboard");
-    } catch {
+    } catch (err) {
       alert("Error setting up account");
+      console.log(err);
+      setLoading(false);
     }
   };
 
@@ -192,9 +199,9 @@ export default function SetupPage() {
 
               <input
                 type="text"
-                value={wallet}
+                value={walletAddress}
                 onChange={(e) => {
-                  setWallet(e.target.value);
+                  setWalletAddress(e.target.value);
                   setErrors((p) => ({ ...p, wallet: undefined }));
                 }}
                 placeholder="0x..."
@@ -202,13 +209,17 @@ export default function SetupPage() {
                 className={`
                   w-full px-4 py-3 bg-gray-100 text-emerald-800 font-mono text-sm
                   border-2 transition-colors disabled:opacity-60 
-                  ${errors.wallet ? "border-red-600" : "border-emerald-800/30"}
+                  ${
+                    errors.walletAddress
+                      ? "border-red-600"
+                      : "border-emerald-800/30"
+                  }
                 `}
               />
 
-              {errors.wallet && (
+              {errors.walletAddress && (
                 <p className="text-xs mt-1 font-mono text-red-600">
-                  {errors.wallet}
+                  {errors.walletAddress}
                 </p>
               )}
 
@@ -230,10 +241,25 @@ export default function SetupPage() {
             {/* Submit */}
             <button
               type="submit"
-              className="w-full group relative flex items-center justify-center gap-3 py-4 bg-lime-400 border-2 border-emerald-800 text-emerald-900 font-semibold transition-all"
+              disabled={loading}
+              className={`w-full group relative flex items-center justify-center gap-3 py-4 border-2 font-semibold transition-all ${
+                loading
+                  ? "bg-gray-300 border-gray-500 text-gray-700 cursor-not-allowed"
+                  : "bg-lime-400 border-emerald-800 text-emerald-900"
+              }
+  `}
             >
-              Create Account
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-gray-700 border-t-transparent rounded-full animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              ) : (
+                <>
+                  Create Account
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </button>
 
             {/* Already have an account */}

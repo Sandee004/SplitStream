@@ -21,7 +21,8 @@ class Products(Base):
     merchant_id = Column(Integer, ForeignKey("users.id"))
     merchant = relationship("User", back_populates="products")
     
-    splits = relationship("ProductSplits", back_populates="product", cascade="all, delete")
+    splits = relationship("ProductSplits", back_populates="product", cascade="all, delete-orphan")
+    #splits = relationship("ProductSplits", back_populates="product", cascade="all, delete")
     sales = relationship("Transactions", back_populates="product")
 
 class ProductSplits(Base):

@@ -8,6 +8,7 @@ export default function LoginPage() {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{
     username?: string;
     password?: string;
@@ -16,12 +17,16 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (loading) return;
+    setLoading(true);
+
     const newErrors: any = {};
     if (!username.trim()) newErrors.username = "Required";
     if (!password.trim()) newErrors.password = "Required";
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      setLoading(false);
       return;
     }
 
@@ -34,12 +39,10 @@ export default function LoginPage() {
 
       if (!res.ok) throw new Error("Login failed");
       const data = await res.json();
-      console.log("Login data: ", data);
 
       // Save token
       if (data.access_token) {
         localStorage.setItem("token", data.access_token);
-        console.log("Saved token");
       }
 
       navigate("/dashboard");
@@ -147,11 +150,12 @@ export default function LoginPage() {
             {/* Submit */}
             <button
               type="submit"
-              className="
-                w-full group relative flex items-center justify-center gap-3 py-4
-                bg-lime-400 border-2 border-emerald-800 text-emerald-900 
-                font-semibold transition-all
-              "
+              className={`w-full group relative flex items-center justify-center gap-3 py-4 border-2 font-semibold transition-all ${
+                loading
+                  ? "bg-gray-300 border-gray-500 text-gray-700 cursor-not-allowed"
+                  : "bg-lime-400 border-emerald-800 text-emerald-900"
+              }
+  `}
             >
               Login
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

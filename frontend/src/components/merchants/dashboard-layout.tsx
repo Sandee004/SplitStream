@@ -1,7 +1,5 @@
-"use client";
-
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   GitBranch,
@@ -11,6 +9,7 @@ import {
   X,
   LogOut,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -24,8 +23,47 @@ const navItems = [
 ];
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const merchant = { alias: "MerchantAlias", wallet: "0x1234567890ABCDEF" }; // replace with actual merchant
+  const [merchant, setMerchant] = useState<{
+    username: string;
+    wallet: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchMerchant = async () => {
+      try {
+        const token = localStorage.getItem("token");
+
+        if (!token) {
+          navigate("/login");
+          return;
+        }
+
+        const res = await fetch("http://localhost:8000/api/dashboard", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) throw new Error("Failed fetch");
+
+        const data = await res.json();
+
+        setMerchant({
+          username: data.merchant_profile.username,
+          wallet: data.merchant_profile.wallet,
+        });
+      } catch (error) {
+        console.error("Error fetching merchant:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMerchant();
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] grid-bg">
@@ -81,12 +119,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <span className="text-xs text-[#1a3a2a]/50 font-mono uppercase tracking-wider">
             Merchant
           </span>
-          <p className="font-semibold text-[#1a3a2a] truncate mt-1">
-            {merchant.alias}
-          </p>
-          <p className="text-xs text-[#1a3a2a]/50 font-mono truncate mt-1">
-            {merchant.wallet.slice(0, 8)}...{merchant.wallet.slice(-6)}
-          </p>
+
+          {loading ? (
+            <p className="text-[#1a3a2a]/50 text-sm mt-1">Loading...</p>
+          ) : merchant ? (
+            <>
+              <p className="font-semibold text-[#1a3a2a] truncate mt-1">
+                {merchant.username.charAt(0).toUpperCase() +
+                  merchant.username.slice(1).toLowerCase()}
+              </p>
+              <p className="text-xs text-[#1a3a2a]/50 font-mono truncate mt-1">
+                {merchant.wallet}
+              </p>
+            </>
+          ) : (
+            <p className="text-red-600 text-xs mt-1">Failed to load merchant</p>
+          )}
         </div>
 
         {/* Navigation */}

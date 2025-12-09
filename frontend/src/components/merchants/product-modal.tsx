@@ -1,18 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useMemo } from "react";
-import { X, ChevronRight, Check, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, ChevronRight, Check, AlertCircle, Loader2 } from "lucide-react";
 import SplitInputRow from "./split-input-row";
+import { useNavigate } from "react-router-dom";
 
 interface Split {
   id: string;
-  wallet: string;
+  wallet_address: string;
   percentage: number;
   isOwner?: boolean;
 }
 
 interface Product {
   id: string;
-  name: string;
+  product_name: string;
   price: number;
   description?: string;
   splits: Split[];
@@ -21,65 +22,71 @@ interface Product {
 interface ProductModalProps {
   isOpen: boolean;
   onClose: () => void;
+  merchantWallet: string;
   product: Product | null;
+  onSuccess: () => void; // <--- Added this prop
 }
 
 export default function ProductModal({
   isOpen,
+  merchantWallet,
   onClose,
   product,
+  onSuccess, // <--- Destructured here
 }: ProductModalProps) {
-  const merchant = useMemo(() => ({ wallet: "0x123" }), []);
-  const addProduct = (p: any) => console.log("add", p);
-  const updateProduct = (id: string, p: any) => console.log("update", id, p);
+  const ownerWallet = merchantWallet;
+  const navigate = useNavigate();
 
+  // State
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [splits, setSplits] = useState<any[]>([]);
   const [errors, setErrors] = useState<{ name?: string; price?: string }>({});
 
+  // Initialize Data
   useEffect(() => {
     if (!isOpen) return;
-    let t: ReturnType<typeof setTimeout> | null = null;
 
     if (product) {
-      t = setTimeout(() => {
-        setName(product.name);
-        setPrice(product.price.toString());
-        setSplits(product.splits);
-        setStep(1);
-        setErrors({});
-      }, 0);
-    } else {
-      t = setTimeout(() => {
-        setName("");
-        setPrice("");
-        setSplits([
-          {
-            id: crypto.randomUUID(),
-            wallet: merchant.wallet,
-            percentage: 100,
-            isOwner: true,
-          },
-        ]);
-        setStep(1);
-        setErrors({});
-      }, 0);
-    }
+      // EDIT MODE
+      setName(product.product_name);
+      setPrice(product.price.toString());
 
-    return () => {
-      if (t) clearTimeout(t);
-    };
-  }, [isOpen, product, merchant.wallet]);
+      const formattedSplits = product.splits.map((s: any) => ({
+        ...s,
+        isOwner: s.wallet_address === ownerWallet,
+      }));
+
+      setSplits(formattedSplits);
+      setStep(1);
+      setErrors({});
+    } else {
+      // CREATE MODE
+      setName("");
+      setPrice("");
+      setSplits([
+        {
+          id: crypto.randomUUID(),
+          wallet_address: ownerWallet,
+          percentage: 100,
+          isOwner: true,
+        },
+      ]);
+      setStep(1);
+      setErrors({});
+    }
+  }, [isOpen, product, ownerWallet]);
 
   const totalPercentage = splits.reduce((sum, s) => sum + s.percentage, 0);
   const isValidTotal = totalPercentage === 100;
 
+  // Split Logic Handlers
   const handleAddCollaborator = () => {
     const newSplit: any = {
       id: crypto.randomUUID(),
-      wallet: "",
+      wallet_address: "",
       percentage: 0,
     };
     const ownerSplit = splits.find((s) => s.isOwner);
@@ -128,6 +135,9 @@ export default function ProductModal({
     setStep(2);
   };
 
+  // =========================================================
+  //  DEPLOY HANDLER
+  // =========================================================
   const handleDeploy = async () => {
     if (!isValidTotal) return;
 
@@ -137,39 +147,52 @@ export default function ProductModal({
       splits,
     };
 
-    const token = localStorage.getItem("token"); // get token
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Unauthorized. Please login again.");
+      navigate("/login");
+      return;
+    }
 
     try {
-      const res = await fetch("http://localhost:8000/api/add-product", {
-        method: "POST",
+      setIsSubmitting(true);
+
+      // Dynamic URL & Method Selection
+      let url = "http://localhost:8000/api/add-product";
+      let method = "POST";
+
+      if (product) {
+        url = `http://localhost:8000/api/update-product/${product.id}`;
+        method = "PUT";
+      }
+
+      const res = await fetch(url, {
+        method: method,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // send token
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(productData),
       });
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.detail || "Failed to add product");
+        throw new Error(errorData.detail || "Failed to save product");
       }
 
-      const savedProduct = await res.json();
-      console.log("Product saved:", savedProduct);
+      // Wait for response, but we don't need the data since we refetch
+      await res.json();
 
-      // Update the dashboard state immediately
-      if (product) {
-        // If editing an existing product
-        updateProduct(product.id, savedProduct);
-      } else {
-        // If adding a new product
-        addProduct(savedProduct);
-      }
+      // Trigger Parent Refresh
+      onSuccess();
 
-      onClose(); // close the modal
+      // Close Modal
+      onClose();
     } catch (err: any) {
       console.error("Error deploying product:", err);
       alert(err.message || "Something went wrong");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -406,14 +429,21 @@ export default function ProductModal({
               </button>
               <button
                 onClick={handleDeploy}
-                disabled={!isValidTotal}
+                disabled={!isValidTotal || isSubmitting}
                 className={`flex items-center gap-2 font-semibold px-8 py-3 transition-all border-2 ${
-                  isValidTotal
+                  isValidTotal && !isSubmitting
                     ? "bg-[#a8e6cf] hover:bg-[#c6f0d5] text-[#1a3a2a] border-[#1a3a2a]"
                     : "bg-[#f5f5f5] text-[#1a3a2a]/30 border-[#1a3a2a]/20 cursor-not-allowed"
                 }`}
               >
-                <span>Deploy Programmable Stream</span>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Deploying...</span>
+                  </>
+                ) : (
+                  <span>Deploy Programmable Stream</span>
+                )}
               </button>
             </>
           )}
