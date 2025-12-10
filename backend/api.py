@@ -215,6 +215,22 @@ def dashboard(
         raise HTTPException(status_code=500, detail="Dashboard error")
     
 
+@app.get("/api/products", response_model=list[schemas.ProductResponse])
+def get_products(
+    db: Session = Depends(get_db),
+    current_user: models.User = Security(get_current_user),
+):
+    # Fetch products owned by merchant
+    products = db.query(models.Products).filter(
+        models.Products.merchant_id == current_user.id
+    ).all()
+
+    if not products:
+        return []
+
+    return products
+
+
 @app.post("/api/add-product", response_model=schemas.ProductResponse)
 def add_product(request: schemas.AddProduct,
     db: Session = Depends(get_db),
@@ -339,6 +355,7 @@ def delete_product(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete product"
         ) from e
+
 
 
 # ------------------------------

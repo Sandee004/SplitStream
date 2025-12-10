@@ -32,12 +32,10 @@ export default function ProductModal({
   merchantWallet,
   onClose,
   product,
-  onSuccess, // <--- Destructured here
+  onSuccess,
 }: ProductModalProps) {
   const ownerWallet = merchantWallet;
   const navigate = useNavigate();
-
-  // State
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState("");
@@ -45,25 +43,20 @@ export default function ProductModal({
   const [splits, setSplits] = useState<any[]>([]);
   const [errors, setErrors] = useState<{ name?: string; price?: string }>({});
 
-  // Initialize Data
   useEffect(() => {
     if (!isOpen) return;
 
     if (product) {
-      // EDIT MODE
       setName(product.product_name);
       setPrice(product.price.toString());
-
       const formattedSplits = product.splits.map((s: any) => ({
         ...s,
         isOwner: s.wallet_address === ownerWallet,
       }));
-
       setSplits(formattedSplits);
       setStep(1);
       setErrors({});
     } else {
-      // CREATE MODE
       setName("");
       setPrice("");
       setSplits([
@@ -135,9 +128,6 @@ export default function ProductModal({
     setStep(2);
   };
 
-  // =========================================================
-  //  DEPLOY HANDLER
-  // =========================================================
   const handleDeploy = async () => {
     if (!isValidTotal) return;
 
@@ -157,7 +147,6 @@ export default function ProductModal({
     try {
       setIsSubmitting(true);
 
-      // Dynamic URL & Method Selection
       let url = "http://localhost:8000/api/add-product";
       let method = "POST";
 
@@ -180,13 +169,8 @@ export default function ProductModal({
         throw new Error(errorData.detail || "Failed to save product");
       }
 
-      // Wait for response, but we don't need the data since we refetch
       await res.json();
-
-      // Trigger Parent Refresh
       onSuccess();
-
-      // Close Modal
       onClose();
     } catch (err: any) {
       console.error("Error deploying product:", err);

@@ -2,15 +2,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Plus, Zap, TrendingUp, Package, Loader2 } from "lucide-react";
-import DashboardLayout from "./dashboard-layout";
 import TransactionTable from "./transaction-table";
 import ProductCard from "./product-card";
 import ProductModal from "./product-modal";
 import { useNavigate } from "react-router-dom";
 
-// =============================================================
-// INTERFACES
-// =============================================================
 interface Split {
   id: string;
   wallet_address: string;
@@ -36,10 +32,6 @@ interface Transaction {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-
-  // =============================================================
-  // STATE
-  // =============================================================
   const [isLoading, setIsLoading] = useState(true); // <--- Loading State
   const [products, setProducts] = useState<Product[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -49,12 +41,9 @@ export default function DashboardPage() {
   const [merchantWallet, setMerchantWallet] = useState<string>("");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
-  // =============================================================
-  // FETCH FUNCTION (REUSABLE)
-  // =============================================================
   const loadDashboardData = useCallback(async () => {
     try {
-      setIsLoading(true); // Start Spinner
+      setIsLoading(true);
 
       const token = localStorage.getItem("token");
       if (!token) {
@@ -79,62 +68,46 @@ export default function DashboardPage() {
       }
 
       const data = await res.json();
+      setProducts(
+        data.inventory.map((item: any) => ({
+          id: item.id.toString(),
+          product_name: item.name,
+          price: item.price,
+          splits: item.splits
+            ? item.splits.map((s: any) => ({
+                id: s.id?.toString() || crypto.randomUUID(),
+                wallet_address: s.wallet_address,
+                percentage: s.percentage,
+                isOwner: s.is_owner || false,
+              }))
+            : [],
+        }))
+      );
 
-      if (data.inventory) {
-        setProducts(
-          data.inventory.map((item: any) => ({
-            id: item.id.toString(),
-            product_name: item.name,
-            price: item.price,
-            description: "",
-            // Ensure splits are mapped correctly from backend
-            splits: item.splits
-              ? item.splits.map((s: any) => ({
-                  id: s.id?.toString() || crypto.randomUUID(),
-                  wallet_address: s.wallet_address,
-                  percentage: s.percentage,
-                  isOwner: s.is_owner || false,
-                }))
-              : [],
-          }))
-        );
-      }
+      setTransactions(
+        data.recent_sales.map((sale: any) => ({
+          id: sale.tx_hash,
+          txHash: sale.tx_hash,
+          productName: sale.item_sold,
+          amount: sale.earned,
+          timestamp: new Date(sale.date),
+        }))
+      );
 
-      // 2. PROCESS TRANSACTIONS
-      if (data.recent_sales) {
-        setTransactions(
-          data.recent_sales.map((sale: any) => ({
-            id: sale.tx_hash,
-            txHash: sale.tx_hash,
-            productName: sale.item_sold,
-            amount: sale.earned,
-            timestamp: new Date(sale.date),
-          }))
-        );
-      }
+      setTotalRevenue(data.stats.total_revenue);
 
-      // 3. PROCESS STATS
-      if (data.stats) {
-        setTotalRevenue(data.stats.total_revenue);
-      }
-      if (data.merchant_profile) {
-        setMerchantWallet(data.merchant_profile.wallet);
-      }
+      setMerchantWallet(data.merchant_profile.wallet);
     } catch (err) {
       console.error("Dashboard Fetch Error:", err);
     } finally {
-      setIsLoading(false); // Stop Spinner
+      setIsLoading(false);
     }
   }, [navigate]);
 
-  // Initial Load
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
 
-  // =============================================================
-  // HANDLERS
-  // =============================================================
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setIsModalOpen(true);
@@ -145,7 +118,6 @@ export default function DashboardPage() {
     setIsModalOpen(false);
   };
 
-  // We delete via API then refresh to be safe
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this stream?")) return;
 
@@ -161,11 +133,8 @@ export default function DashboardPage() {
     }
   };
 
-  // =============================================================
-  // RENDER
-  // =============================================================
   return (
-    <DashboardLayout>
+    <>
       {/* LOADING OVERLAY */}
       {isLoading && (
         <div className="fixed inset-0 z-40 bg-background/50 backdrop-blur-sm flex items-center justify-center">
@@ -177,9 +146,24 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+      {/* HEADER */}
+      <header className="hidden lg:flex items-center justify-between px-8 py-4 bg-white border-b-2 border-[#1a3a2a]/20">
+        <div>
+          <h1 className="text-xl font-bold text-[#1a3a2a]">Dashboard</h1>
+          <p className="text-sm text-[#1a3a2a]/50">
+            Manage your revenue streams
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-[#a8e6cf]/20 border border-[#a8e6cf]/30">
+            <div className="w-2 h-2 bg-[#a8e6cf] rounded-full animate-pulse" />
+            <span className="text-xs font-mono text-[#1a3a2a]">CONNECTED</span>
+          </div>
+        </div>
+      </header>
 
-      <div className="space-y-8">
-        {/* ========================= STATS ========================= */}
+      <div className="space-y-8 p-6 pt-20 lg:pt-6">
+        {/* STATS */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -232,7 +216,7 @@ export default function DashboardPage() {
           </div>
         </motion.div>
 
-        {/* ====================== ADD STREAM CTA ====================== */}
+        {/* ADD STREAM CTA */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -260,7 +244,7 @@ export default function DashboardPage() {
           </button>
         </motion.div>
 
-        {/* ====================== ACTIVE STREAMS ====================== */}
+        {/* ACTIVE STREAMS */}
         {products.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -292,7 +276,7 @@ export default function DashboardPage() {
           </motion.div>
         )}
 
-        {/* ====================== TRANSACTION TABLE ====================== */}
+        {/* TRANSACTION TABLE */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -308,9 +292,8 @@ export default function DashboardPage() {
         onClose={handleCloseModal}
         product={editingProduct}
         merchantWallet={merchantWallet}
-        // 👇 This triggers the refresh/spinner when done
         onSuccess={loadDashboardData}
       />
-    </DashboardLayout>
+    </>
   );
 }
