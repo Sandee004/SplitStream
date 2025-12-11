@@ -45,3 +45,12 @@ class ProductResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class Profile(BaseModel):
+    username: str
+    email: str
+    wallet_address: str
+
+class UpdatePassword(BaseModel):
+    old_password: str
+    new_password: str

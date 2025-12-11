@@ -32,7 +32,7 @@ interface Transaction {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true); // <--- Loading State
+  const [isLoading, setIsLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);

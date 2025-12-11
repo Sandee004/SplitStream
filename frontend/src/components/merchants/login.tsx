@@ -157,8 +157,17 @@ export default function LoginPage() {
               }
   `}
             >
-              Login
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-gray-700 border-t-transparent rounded-full animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              ) : (
+                <>
+                  Login
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </button>
             {/* Don't have an account */}
             <p className="text-center text-sm mt-4 font-mono text-emerald-800/70">

@@ -215,7 +215,7 @@ def dashboard(
         raise HTTPException(status_code=500, detail="Dashboard error")
     
 
-@app.get("/api/products", response_model=list[schemas.ProductResponse])
+@app.get("/api/products", tags=["Product"], response_model=list[schemas.ProductResponse])
 def get_products(
     db: Session = Depends(get_db),
     current_user: models.User = Security(get_current_user),
@@ -231,7 +231,7 @@ def get_products(
     return products
 
 
-@app.post("/api/add-product", response_model=schemas.ProductResponse)
+@app.post("/api/add-product", tags=["Product"], response_model=schemas.ProductResponse)
 def add_product(request: schemas.AddProduct,
     db: Session = Depends(get_db),
     current_user: models.User = Security(get_current_user)):
@@ -270,7 +270,7 @@ def add_product(request: schemas.AddProduct,
         raise HTTPException(500, "Failed to create product")
 
 
-@app.put("/api/update-product/{product_id}", response_model=schemas.ProductResponse)
+@app.put("/api/update-product/{product_id}", tags=["Product"], response_model=schemas.ProductResponse)
 def update_product(
     product_id: int,
     request: schemas.AddProduct,
@@ -286,21 +286,14 @@ def update_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # 2. Update Basic Info
     product.product_name = request.product_name
     product.price = request.price
 
-    # =========================================================
-    #  SMART UPDATE LOGIC
-    # =========================================================
     
-    # A. Get all existing splits from DB
     existing_splits = db.query(models.ProductSplits).filter(
         models.ProductSplits.product_id == product.id
     ).all()
     
-    # Map existing splits by Wallet Address (or ID) for easy lookup
-    # Using wallet_address as unique key here, but ID is safer if frontend sends it
     existing_map = {split.wallet_address: split for split in existing_splits}
     
     incoming_wallets = [s.wallet_address for s in request.splits]
@@ -314,7 +307,6 @@ def update_product(
             existing_record = existing_map[split_data.wallet_address]
             existing_record.percentage = split_data.percentage
         else:
-            # CREATE new record
             new_split = models.ProductSplits(
                 wallet_address=split_data.wallet_address,
                 percentage=split_data.percentage,
@@ -331,7 +323,7 @@ def update_product(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.delete("/api/delete-product/{product_id}")
+@app.delete("/api/delete-product/{product_id}", tags=["Product"])
 def delete_product(
     product_id: int,
     db: Session = Depends(get_db),
@@ -356,6 +348,105 @@ def delete_product(
             detail="Failed to delete product"
         ) from e
 
+
+@app.get("/api/profile", tags=["User"], response_model=schemas.Profile)
+def profile(db: Session = Depends(get_db),
+    current_user: models.User = Security(get_current_user),
+    ):
+    
+    profile = db.query(models.User).filter(
+        models.User.id == current_user.id
+    ).first()
+
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return profile
+
+
+@app.put("/api/profile", response_model=schemas.Profile, tags=["User"])
+def update_profile(
+    request: schemas.Profile,
+    db: Session = Depends(get_db),
+    current_user: models.User = Security(get_current_user)
+):
+    profile = db.query(models.User).filter(
+        models.User.id == current_user.id
+    ).first()
+
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    existing_user = db.query(models.User).filter(
+    models.User.username == request.username.lower(),
+    models.User.id != current_user.id).first()
+    
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Username is already taken"
+        )
+
+    profile.username = request.username.lower()
+    profile.email = request.email
+    profile.wallet_address = request.wallet_address
+    
+    try:
+        db.commit()
+        db.refresh(profile)
+        return profile
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/profile/password", tags=["User"])
+def change_password(
+    data: schemas.UpdatePassword,
+    db: Session = Depends(get_db),
+    current_user: models.User = Security(get_current_user),
+):
+    user = db.query(models.User).filter(models.User.id == current_user.id).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not pwd_cxt.verify(data.old_password, user.password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password cannot be updated",
+        )
+
+    user.password = pwd_cxt.hash(data.new_password)
+    db.commit()
+    db.refresh(user)
+
+    return {"message": "Password updated successfully"}
+
+
+
+@app.delete("/api/delete-account", tags=["User"])
+def delete_account(
+    db: Session = Depends(get_db),
+    current_user: models.User = Security(get_current_user)
+):
+    profile = db.query(models.User).filter(
+        models.User.id == current_user.id
+    ).first()
+
+    if not profile:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    try:
+        db.delete(profile)
+        db.commit()
+        return {"detail": "Account deleted successfully"}
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete account"
+        ) from e
 
 
 # ------------------------------

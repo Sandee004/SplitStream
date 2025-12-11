@@ -165,6 +165,10 @@ export default function ProductModal({
       });
 
       if (!res.ok) {
+        if (res.status === 401) {
+          alert("Unauthorized. Login again to continue!");
+          navigate("/login");
+        }
         const errorData = await res.json();
         throw new Error(errorData.detail || "Failed to save product");
       }

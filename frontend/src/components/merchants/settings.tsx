@@ -1,190 +1,404 @@
-{
-  /*import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Save, User, Wallet, AlertTriangle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import DashboardLayout from '@/components/DashboardLayout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useMerchantStore } from '@/stores/merchantStore';
-import { toast } from 'sonner';
+import { useCallback, useEffect, useState } from "react";
+import { Save, User, AlertTriangle, Lock, EyeOff, Eye } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-const DashboardSettings = () => {
+export default function SettingsPage() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [walletAddress, setWalletAddress] = useState("");
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  // State to toggle visibility
+  const [showOld, setShowOld] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const navigate = useNavigate();
-  const alias = useMerchantStore((state) => state.alias);
-  const walletAddress = useMerchantStore((state) => state.walletAddress);
-  const setMerchant = useMerchantStore((state) => state.setMerchant);
 
-  const [newAlias, setNewAlias] = useState(alias);
-  const [newWallet, setNewWallet] = useState(walletAddress);
+  const loadProfile = useCallback(async () => {
+    try {
+      setIsLoading(true);
+
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      const res = await fetch("http://localhost:8000/api/profile", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert("Session expired. Please login again");
+          navigate("/login");
+        }
+        throw new Error("Can't load dashboard data");
+      }
+
+      const data = await res.json();
+      console.log(data);
+      setUsername(data.username);
+      setEmail(data.email);
+      setWalletAddress(data.wallet_address);
+    } catch (err) {
+      console.error("Profile Fetch Error:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [navigate]);
 
   useEffect(() => {
-    if (!alias) navigate('/setup');
-  }, [alias, navigate]);
+    loadProfile();
+  }, [loadProfile]);
 
-  const handleSave = () => {
-    if (newAlias.trim() && newWallet.trim()) {
-      setMerchant(newAlias.trim(), newWallet.trim());
-      toast.success('Settings updated successfully');
+  const saveProfile = async () => {
+    if (!username.trim() || !email.trim() || !walletAddress.trim()) {
+      alert("Please fill out all fields.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("http://localhost:8000/api/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          username,
+          email,
+          wallet_address: walletAddress,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to update profile");
+      alert("Profile updated!");
+    } catch (err) {
+      console.error(err);
+      alert("Error updating profile");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const hasChanges = newAlias !== alias || newWallet !== walletAddress;
+  const savePassword = async () => {
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      alert("All password fields are required.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      alert("New passwords do not match.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("http://localhost:8000/api/profile/password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          old_password: oldPassword,
+          new_password: newPassword,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to update password");
+
+      alert("Password updated successfully!");
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      console.error(err);
+      alert("Error updating password");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteAccount = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("http://localhost:8000/api/delete-account", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Failed to delete account");
+
+      alert("Account deleted successfully!");
+      navigate("/setup");
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting account. Pls try again later");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <DashboardLayout>
-      <div className="max-w-2xl space-y-8">
-        {/* Header /}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-          <p className="text-sm font-mono text-muted-foreground mt-1">
-            MERCHANT_CONFIG
-          </p>
-        </motion.div>
+    <>
+      <div
+        className="
+          min-h-screen p-8 relative grid-bg-pattern grid-animate-scroll 
+          bg-white text-emerald-900
+        "
+      >
+        {/* Decorative corners */}
+        <div className="fixed top-8 left-8 w-8 h-8 border-l-2 border-t-2 border-emerald-800/20" />
+        <div className="fixed top-8 right-8 w-8 h-8 border-r-2 border-t-2 border-emerald-800/20" />
+        <div className="fixed bottom-8 left-8 w-8 h-8 border-l-2 border-b-2 border-emerald-800/20" />
+        <div className="fixed bottom-8 right-8 w-8 h-8 border-r-2 border-b-2 border-emerald-800/20" />
 
-        {/* Profile Section /}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="border-2 border-border bg-card"
-        >
-          <div className="p-6 border-b border-border">
-            <h2 className="font-semibold text-foreground">Origin Identity</h2>
-            <p className="text-xs font-mono text-muted-foreground mt-1">
-              Primary merchant configuration
-            </p>
-          </div>
-          
-          <div className="p-6 space-y-6">
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <User className="w-4 h-4" />
-                Merchant Alias
-              </label>
-              <Input
-                value={newAlias}
-                onChange={(e) => setNewAlias(e.target.value)}
-              />
+        <div className="max-w-3xl mx-auto space-y-10">
+          {/* HEADER */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-lime-400" />
+              <span className="text-xs font-mono text-emerald-800/60 tracking-wide">
+                SETTINGS
+              </span>
             </div>
+            <h1 className="text-3xl font-bold text-emerald-900">
+              Account Settings
+            </h1>
+          </div>
 
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <Wallet className="w-4 h-4" />
-                Default Payout Wallet
-              </label>
-              <Input
-                variant="mono"
-                value={newWallet}
-                onChange={(e) => setNewWallet(e.target.value)}
-              />
-              <p className="text-xs font-mono text-muted-foreground">
-                This wallet receives the owner's share of all revenue splits
+          {/* PROFILE BOX */}
+          <div className="relative bg-white border-2 border-emerald-800 p-0">
+            {/* corners */}
+            <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-lime-400" />
+            <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-lime-400" />
+            <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-lime-400" />
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-lime-400" />
+
+            <div className="p-6 border-b border-emerald-800/20">
+              <h2 className="text-xl font-semibold text-emerald-800 flex items-center gap-2">
+                <User className="w-5 h-5" /> Profile
+              </h2>
+              <p className="text-sm font-mono text-emerald-700/60">
+                Merchant identity & payout configuration
               </p>
             </div>
-          </div>
 
-          <div className="p-6 border-t border-border bg-secondary/30">
-            <Button
-              variant="accent"
-              onClick={handleSave}
-              disabled={!hasChanges}
-              className="w-full sm:w-auto"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              Save Changes
-            </Button>
-          </div>
-        </motion.div>
+            <div className="p-6 space-y-6">
+              {/* Username */}
+              <div>
+                <label className="block text-sm font-mono mb-2 text-emerald-900">
+                  Username
+                </label>
+                <input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="
+                    w-full px-4 py-3 bg-gray-100 text-emerald-900 
+                    border-2 border-emerald-800/30
+                  "
+                />
+              </div>
 
-        {/* Danger Zone /}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="border-2 border-destructive/30 bg-card"
-        >
-          <div className="p-6 border-b border-destructive/30 bg-destructive/5">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-destructive" />
-              <h2 className="font-semibold text-foreground">Danger Zone</h2>
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-mono mb-2 text-emerald-900">
+                  Email
+                </label>
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="
+                    w-full px-4 py-3 bg-gray-100 text-emerald-900 
+                    border-2 border-emerald-800/30
+                  "
+                />
+              </div>
+
+              {/* Wallet */}
+              <div>
+                <label className="block text-sm font-mono mb-2 text-emerald-900">
+                  Default Payout Wallet
+                </label>
+                <input
+                  value={walletAddress}
+                  onChange={(e) => setWalletAddress(e.target.value)}
+                  className="
+                    w-full px-4 py-3 bg-gray-100 text-emerald-900 
+                    border-2 border-emerald-800/30 font-mono
+                  "
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-emerald-800/20 bg-gray-100">
+              <button
+                className={`
+                  px-6 py-3 border-2 font-semibold transition ${
+                    isLoading
+                      ? "bg-gray-300 border-gray-500 text-gray-700 cursor-not-allowed"
+                      : "bg-lime-400 border-emerald-800 text-emerald-900 hover:bg-lime-300"
+                  }
+  `}
+                onClick={saveProfile}
+              >
+                <Save className="w-4 h-4 inline mr-2" />
+                Save Changes
+              </button>
             </div>
           </div>
-          
-          <div className="p-6">
-            <p className="text-sm text-muted-foreground mb-4">
-              Clear all local data including merchant profile and product streams.
-              This action cannot be undone.
-            </p>
-            <Button
-              variant="outline"
-              className="border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-              onClick={() => {
-                if (confirm('Are you sure you want to clear all data?')) {
-                  localStorage.clear();
-                  window.location.href = '/';
-                }
-              }}
-            >
-              Clear All Data
-            </Button>
+
+          {/* PASSWORD BOX */}
+          <div className="relative bg-white border-2 border-emerald-800">
+            {/* corners */}
+            <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-lime-400" />
+            <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-lime-400" />
+            <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-lime-400" />
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-lime-400" />
+
+            <div className="p-6 border-b border-emerald-800/20">
+              <h2 className="text-xl font-semibold text-emerald-900 flex items-center gap-2">
+                <Lock className="w-5 h-5" /> Update Password
+              </h2>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Old Password */}
+              <div className="relative">
+                <label className="block text-sm font-mono mb-2">
+                  Old Password
+                </label>
+                <input
+                  type={showOld ? "text" : "password"}
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-100 border-2 border-emerald-800/30 pr-10 rounded"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowOld((prev) => !prev)}
+                  className="absolute right-3 top-12 flex items-center justify-center text-emerald-800"
+                >
+                  {showOld ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+
+              {/* New Password */}
+              <div className="relative">
+                <label className="block text-sm font-mono mb-2">
+                  New Password
+                </label>
+                <input
+                  type={showNew ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-100 border-2 border-emerald-800/30 pr-10 rounded"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNew((prev) => !prev)}
+                  className="absolute right-3 top-12 flex items-center justify-center text-emerald-800"
+                >
+                  {showNew ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+
+              {/* Confirm Password */}
+              <div className="relative">
+                <label className="block text-sm font-mono mb-2">
+                  Confirm New Password
+                </label>
+                <input
+                  type={showConfirm ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-100 border-2 border-emerald-800/30 pr-10 rounded"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm((prev) => !prev)}
+                  className="absolute right-3 top-12 flex items-center justify-center text-emerald-800"
+                >
+                  {showConfirm ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-emerald-800/20 bg-gray-100">
+              <button
+                className={`
+                  px-6 py-3 border-2 font-semibold transition ${
+                    isLoading
+                      ? "bg-gray-300 border-gray-500 text-gray-700 cursor-not-allowed"
+                      : "bg-lime-400 border-emerald-800 text-emerald-900 hover:bg-lime-300"
+                  }
+  `}
+                onClick={savePassword}
+              >
+                Update Password
+              </button>
+            </div>
           </div>
-        </motion.div>
+
+          {/* DANGER ZONE */}
+          <div className="relative bg-white border-2 border-red-700">
+            <div className="p-6 bg-red-50 border-b border-red-700/50">
+              <h2 className="text-xl font-semibold text-red-700 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" /> Danger Zone
+              </h2>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm font-mono text-red-700/70">
+                Clear all local data including merchant profile and product
+                streams.
+              </p>
+
+              <button
+                className="
+                  px-6 py-3 border-2 border-red-700 text-red-700 
+                  font-semibold hover:bg-red-700 hover:text-white transition
+                "
+                onClick={() => {
+                  if (confirm("Are you sure? This cannot be undone.")) {
+                    deleteAccount();
+                  }
+                }}
+              >
+                Clear All Data
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
-    </DashboardLayout>
-  );
-};
-
-export default DashboardSettings;
-*/
-}
-
-export default function SettingsPage() {
-  return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-bold text-[#1a3a2a]">Settings</h1>
-
-      {/* Profile Settings */}
-      <div className="bg-white p-6 border border-[#1a3a2a]/10 space-y-4">
-        <h2 className="font-semibold text-[#1a3a2a]">Profile Details</h2>
-
-        <input
-          className="w-full p-2 border border-[#1a3a2a]/20"
-          placeholder="Name"
-        />
-        <input
-          className="w-full p-2 border border-[#1a3a2a]/20"
-          placeholder="Email"
-        />
-
-        <button className="px-4 py-2 bg-[#1a3a2a] text-white text-sm">
-          Save Changes
-        </button>
-      </div>
-
-      {/* Wallet Settings */}
-      <div className="bg-white p-6 border border-[#1a3a2a]/10 space-y-3">
-        <h2 className="font-semibold text-[#1a3a2a]">Wallet Address</h2>
-        <input
-          className="w-full p-2 border border-[#1a3a2a]/20"
-          placeholder="0x..."
-        />
-        <button className="px-4 py-2 bg-[#1a3a2a] text-white text-sm">
-          Update Wallet
-        </button>
-      </div>
-
-      {/* Danger Zone */}
-      <div className="bg-white p-6 border border-red-400/30 space-y-3">
-        <h2 className="font-semibold text-red-700">Danger Zone</h2>
-
-        <button className="px-4 py-2 bg-red-700 text-white text-sm">
-          Delete Account
-        </button>
-      </div>
-    </div>
+    </>
   );
 }
