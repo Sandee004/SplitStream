@@ -1,4 +1,4 @@
-from .imports import FastAPI, CORSMiddleware, os, StaticFiles, HTTPException, FileResponse, datetime, timedelta, jwt, Session, Depends, status, IntegrityError, OAuth2PasswordBearer, HTTPBearer, CryptContext, Security, ExpiredSignatureError, JWTError, SQLAlchemyError, List
+from .imports import FastAPI, CORSMiddleware, os, StaticFiles, HTTPException, FileResponse, datetime, timedelta, jwt, Session, Depends, status, IntegrityError, OAuth2PasswordBearer, HTTPBearer, CryptContext, Security, ExpiredSignatureError, JWTError, SQLAlchemyError, joinedload
 from . import models, schemas
 from .database import engine, SessionLocal
 from .config import build_frontend, DIST_DIR, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -447,6 +447,31 @@ def delete_account(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete account"
         ) from e
+
+
+@app.get("/api/transactions", response_model=list[schemas.TransactionOut])
+def get_transaction_history(
+    db: Session = Depends(get_db),
+    current_user: models.User = Security(get_current_user),
+):
+    transactions = (
+        db.query(models.Transactions)
+        .join(models.Products)
+        .options(joinedload(models.Transactions.product))
+        .filter(models.Products.merchant_id == current_user.id)
+        .all()
+    )
+
+    return [
+        schemas.TransactionOut(
+            id=tx.id,
+            tx_hash=tx.tx_hash,
+            amount=tx.amount,
+            bought_at=tx.bought_at,
+            product_name=tx.product.product_name,
+        )
+        for tx in transactions
+    ]
 
 
 # ------------------------------

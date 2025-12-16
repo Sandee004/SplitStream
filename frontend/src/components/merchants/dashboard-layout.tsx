@@ -1,14 +1,3 @@
-{
-  /*
-const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", active: true },
-  { icon: GitBranch, label: "Streams", active: false },
-  { icon: History, label: "History", active: false },
-  { icon: Settings, label: "Settings", active: false },
-];
-console.log(navItems);*/
-}
-
 import { useEffect, useState } from "react";
 import {
   Menu,
@@ -55,10 +44,12 @@ export default function DashboardLayout() {
         }
         const data = await res.json();
 
-        setMerchant({
+        const merchantData = {
           username: data.merchant_profile.username,
           wallet: data.merchant_profile.wallet,
-        });
+        };
+        setMerchant(merchantData);
+        localStorage.setItem("walletAddress", merchantData.wallet);
       } catch (error) {
         console.error("Error fetching merchant:", error);
       } finally {

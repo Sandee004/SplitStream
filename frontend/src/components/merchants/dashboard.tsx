@@ -284,7 +284,7 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <TransactionTable transactions={transactions} />
+          <TransactionTable transactions={transactions.slice(0, 8)} />
         </motion.div>
       </div>
 

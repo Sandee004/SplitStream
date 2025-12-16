@@ -54,3 +54,13 @@ class Profile(BaseModel):
 class UpdatePassword(BaseModel):
     old_password: str
     new_password: str
+
+class TransactionOut(BaseModel):
+    id: int
+    tx_hash: str
+    amount: int
+    bought_at: datetime
+    product_name: str
+
+    class Config:
+        from_attributes = True
