@@ -5,12 +5,12 @@ from . import models
 pwd_cxt = CryptContext(schemes=['bcrypt'], deprecated="auto")
 
 def seed_demo_user(db: Session):
-    if db.query(models.User).filter(models.User.username == "Example").first():
-        print("Merchant 'Example' already exists. Skipping.")
+    if db.query(models.User).filter(models.User.username == "example").first():
+        print("Merchant 'example' already exists. Skipping.")
         return
 
     merchant = models.User(
-        username="Example",
+        username="example",
         email="example@gmail.com",
         password=pwd_cxt.hash("1234"),
         wallet_address="0xMerchantWallet123"

@@ -46,8 +46,13 @@ export default function DashboardLayout() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (!res.ok) throw new Error("Failed fetch");
-
+        if (!res.ok) {
+          if (res.status === 401) {
+            alert("Session expired. Please login again");
+            navigate("/login");
+          }
+          throw new Error("Can't load dashboard data");
+        }
         const data = await res.json();
 
         setMerchant({

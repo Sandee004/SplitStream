@@ -134,11 +134,11 @@ export default function DashboardPage() {
   };
 
   return (
-    <>
+    <div className="min-h-screen relative grid-bg-pattern grid-animate-scroll">
       {/* LOADING OVERLAY */}
       {isLoading && (
         <div className="fixed inset-0 z-40 bg-background/50 backdrop-blur-sm flex items-center justify-center">
-          <div className="bg-card border border-border p-4 shadow-xl flex items-center gap-3">
+          <div className="bg-[#FFFFFF] border border-[#BED4C7] p-4 shadow-xl flex items-center gap-3">
             <Loader2 className="w-6 h-6 text-accent animate-spin" />
             <span className="font-mono text-sm text-foreground">
               Updating Dashboard...
@@ -170,28 +170,30 @@ export default function DashboardPage() {
           className="grid grid-cols-1 sm:grid-cols-3 gap-4"
         >
           {/* Total Inflow */}
-          <div className="border-2 border-border bg-card p-5">
+          <div className="border-2 border-[#BED4C7] bg-[#FFFFFF] p-5">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 border border-border flex items-center justify-center bg-secondary">
+              <div className="w-8 h-8 border border-[#BED4C7] flex items-center justify-center bg-secondary">
                 <TrendingUp className="w-4 h-4 text-accent" />
               </div>
-              <span className="text-xs font-mono text-muted-foreground">
+              <span className="text-xs font-mono text-[#F2F6F4]-foreground">
                 TOTAL_INFLOW
               </span>
             </div>
             <p className="text-2xl font-bold font-mono text-foreground">
               {totalRevenue.toLocaleString()}
-              <span className="text-sm text-muted-foreground ml-1">MNEE</span>
+              <span className="text-sm text-[#F2F6F4]-foreground ml-1">
+                MNEE
+              </span>
             </p>
           </div>
 
           {/* Active Streams */}
-          <div className="border-2 border-border bg-card p-5">
+          <div className="border-2 border-[#BED4C7] bg-[#FFFFFF] p-5">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 border border-border flex items-center justify-center bg-secondary">
+              <div className="w-8 h-8 border border-[#BED4C7] flex items-center justify-center bg-secondary">
                 <Package className="w-4 h-4 text-accent" />
               </div>
-              <span className="text-xs font-mono text-muted-foreground">
+              <span className="text-xs font-mono text-[#F2F6F4]-foreground">
                 ACTIVE_STREAMS
               </span>
             </div>
@@ -201,12 +203,12 @@ export default function DashboardPage() {
           </div>
 
           {/* Transactions */}
-          <div className="border-2 border-border bg-card p-5">
+          <div className="border-2 border-[#BED4C7] bg-[#FFFFFF] p-5">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 border border-border flex items-center justify-center bg-secondary">
+              <div className="w-8 h-8 border border-[#BED4C7] flex items-center justify-center bg-secondary">
                 <Zap className="w-4 h-4 text-accent" />
               </div>
-              <span className="text-xs font-mono text-muted-foreground">
+              <span className="text-xs font-mono text-[#F2F6F4]-foreground">
                 TRANSACTIONS
               </span>
             </div>
@@ -235,7 +237,7 @@ export default function DashboardPage() {
                 <h3 className="text-xl font-bold text-foreground mb-1">
                   Initialize New Revenue Stream
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-[#F2F6F4]-foreground">
                   Create a programmable split for your next product or
                   collaboration
                 </p>
@@ -256,7 +258,7 @@ export default function DashboardPage() {
                 <h3 className="text-sm font-bold text-foreground">
                   Active Streams
                 </h3>
-                <p className="text-xs font-mono text-muted-foreground">
+                <p className="text-xs font-mono text-[#F2F6F4]-foreground">
                   PRODUCT_REGISTRY
                 </p>
               </div>
@@ -294,6 +296,6 @@ export default function DashboardPage() {
         merchantWallet={merchantWallet}
         onSuccess={loadDashboardData}
       />
-    </>
+    </div>
   );
 }

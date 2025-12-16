@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from "react";
-import { ArrowRight, User, Lock } from "lucide-react";
+import { ArrowRight, User, Lock, EyeOff, Eye } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function LoginPage() {
@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{
     username?: string;
     password?: string;
@@ -40,13 +41,12 @@ export default function LoginPage() {
       if (!res.ok) throw new Error("Login failed");
       const data = await res.json();
 
-      // Save token
       if (data.access_token) {
         localStorage.setItem("token", data.access_token);
       }
-
       navigate("/dashboard");
     } catch {
+      setLoading(false);
       alert("Invalid username or password");
     }
   };
@@ -121,30 +121,43 @@ export default function LoginPage() {
 
             {/* Password */}
             <div>
-              <label className="flex items-center gap-2 text-sm font-medium mb-2 text-emerald-800">
-                <Lock className="w-4 h-4" /> Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setErrors((p) => ({ ...p, password: undefined }));
-                }}
-                placeholder="••••••••"
-                className={`
+              <div className="relative">
+                <label className="flex items-center gap-2 text-sm font-medium mb-2 text-emerald-800">
+                  <Lock className="w-4 h-4" /> Password
+                </label>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  placeholder="••••••••"
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setErrors((p) => ({ ...p, password: undefined }));
+                  }}
+                  className={`
                   w-full px-4 py-3 bg-gray-100 text-emerald-800 
                   border-2 transition-colors 
                   ${
                     errors.password ? "border-red-600" : "border-emerald-800/30"
                   }
                 `}
-              />
-              {errors.password && (
-                <p className="text-xs mt-1 font-mono text-red-600">
-                  {errors.password}
-                </p>
-              )}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-10 flex items-center justify-center text-emerald-800"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+                {errors.password && (
+                  <p className="text-xs mt-1 font-mono text-red-600">
+                    {errors.password}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Submit */}

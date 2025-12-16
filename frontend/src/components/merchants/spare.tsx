@@ -1,688 +1,194 @@
 {
-  /*
-    import { useEffect, useState } from "react";
-    import {
-      LayoutDashboard,
-      GitBranch,
-      History,
-      Settings,
-      Menu,
-      X,
-      LogOut,
-    } from "lucide-react";
-    import { useNavigate } from "react-router-dom";
-    
-    // Import your actual page components
-    import DashboardPage from "./dashboard";
-    import StreamsPage from "./active-streams";
-    import HistoryPage from "./history";
-    import SettingsPage from "./settings";
-    
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    interface DashboardLayoutProps {}
-    
-    // eslint-disable-next-line no-empty-pattern
-    export default function DashboardLayout({}: DashboardLayoutProps) {
-      const [merchant, setMerchant] = useState<{
-        username: string;
-        wallet: string;
-      } | null>(null);
-      const [loading, setLoading] = useState(true);
-      const [sidebarOpen, setSidebarOpen] = useState(false);
-      const [activeSection, setActiveSection] = useState<SectionKey>("Dashboard");
-      const navigate = useNavigate();
-    
-      useEffect(() => {
-        const fetchMerchant = async () => {
-          try {
-            const token = localStorage.getItem("token");
-            if (!token) {
-              navigate("/login");
-              return;
-            }
-            const res = await fetch("http://localhost:8000/api/dashboard", {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) throw new Error("Failed fetch");
-            const data = await res.json();
-            setMerchant({
-              username: data.merchant_profile.username,
-              wallet: data.merchant_profile.wallet,
-            });
-          } catch (error) {
-            console.error("Error fetching merchant:", error);
-          } finally {
-            setLoading(false);
-          }
-        };
-    
-        fetchMerchant();
-      }, [navigate]);
-    
-      // Map each nav item to a React component
-      const sections = {
-        Dashboard: <DashboardPage />,
-        Streams: (
-          <StreamsPage products={[]} onEdit={() => {}} onDelete={() => {}} />
-        ),
-        History: <HistoryPage />,
-        Settings: <SettingsPage />,
-      };
-      type SectionKey = keyof typeof sections;
-    
-      const navItems = [
-        { icon: LayoutDashboard, label: "Dashboard" },
-        { icon: GitBranch, label: "Streams" },
-        { icon: History, label: "History" },
-        { icon: Settings, label: "Settings" },
-      ];
-    
-      return (
-        <div className="min-h-screen bg-[#f5f5f5] grid-bg">
-          {/* Mobile Header *}
-          <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b-2 border-[#1a3a2a]/20">
-            <div className="flex items-center justify-between px-4 py-3">
-              <a href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-[#1a3a2a] flex items-center justify-center">
-                  <span className="text-[#a8e6cf] font-bold text-sm">SS</span>
-                </div>
-                <span className="font-bold text-[#1a3a2a]">SplitStream</span>
-              </a>
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 border border-[#1a3a2a]/20"
-              >
-                {sidebarOpen ? (
-                  <X className="w-5 h-5 text-[#1a3a2a]" />
-                ) : (
-                  <Menu className="w-5 h-5 text-[#1a3a2a]" />
-                )}
-              </button>
-            </div>
-          </header>
-    
-          {/* Sidebar *}
-          <aside
-            className={`fixed top-0 left-0 z-40 h-full w-64 bg-white border-r-2 border-[#1a3a2a]/20 transform transition-transform duration-200 lg:translate-x-0 ${
-              sidebarOpen ? "translate-x-0" : "-translate-x-full"
-            }`}
-          >
-            {/* Logo *}
-            <div className="p-6 border-b border-[#1a3a2a]/10">
-              <a href="/" className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#1a3a2a] flex items-center justify-center relative">
-                  <span className="text-[#a8e6cf] font-bold">SS</span>
-                </div>
-                <div>
-                  <span className="font-bold text-[#1a3a2a] text-lg">
-                    SplitStream
-                  </span>
-                  <span className="block text-xs text-[#1a3a2a]/50 font-mono">
-                    v1.0.0
-                  </span>
-                </div>
-              </a>
-            </div>
-    
-            {/* Merchant Info *}
-            <div className="p-4 mx-4 mt-4 bg-[#f5f5f5] border border-[#1a3a2a]/10">
-              <span className="text-xs text-[#1a3a2a]/50 font-mono uppercase tracking-wider">
-                Merchant
-              </span>
-              {loading ? (
-                <p className="text-[#1a3a2a]/50 text-sm mt-1">Loading...</p>
-              ) : merchant ? (
-                <>
-                  <p className="font-semibold text-[#1a3a2a] truncate mt-1">
-                    {merchant.username.charAt(0).toUpperCase() +
-                      merchant.username.slice(1).toLowerCase()}
-                  </p>
-                  <p className="text-xs text-[#1a3a2a]/50 font-mono truncate mt-1">
-                    {merchant.wallet}
-                  </p>
-                </>
-              ) : (
-                <p className="text-red-600 text-xs mt-1">Failed to load merchant</p>
-              )}
-            </div>
-    
-            {/* Navigation /}
-            <nav className="p-4 mt-4">
-              <span className="text-xs text-[#1a3a2a]/40 font-mono uppercase tracking-wider px-3 mb-2 block">
-                Navigation
-              </span>
-              <ul className="space-y-1">
-                {navItems.map((item) => (
-                  <li key={item.label}>
-                    <button
-                      onClick={() => setActiveSection(item.label as SectionKey)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors ${
-                        activeSection === item.label
-                          ? "bg-[#a8e6cf]/20 border-l-2 border-[#a8e6cf] text-[#1a3a2a]"
-                          : "text-[#1a3a2a]/60 hover:text-[#1a3a2a] hover:bg-[#f5f5f5]"
-                      }`}
-                    >
-                      <item.icon className="w-4 h-4" />
-                      <span className="text-sm font-medium">{item.label}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-    
-            {/* Bottom Actions *}
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-[#1a3a2a]/10">
-              <a
-                href="/"
-                className="flex items-center gap-3 px-3 py-2.5 text-[#1a3a2a]/60 hover:text-[#1a3a2a] hover:bg-[#f5f5f5] transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="text-sm font-medium">Exit Protocol</span>
-              </a>
-            </div>
-          </aside>
-    
-          {/* Mobile Overlay /}
-          {sidebarOpen && (
-            <div
-              className="fixed inset-0 bg-[#1a3a2a]/20 z-30 lg:hidden"
-              onClick={() => setSidebarOpen(false)}
-            />
-          )}
-    
-          {/* Main Content /}
-          <main className="lg:ml-64 pt-16 lg:pt-0 p-4 lg:p-8">
-            {sections[activeSection]}
-          </main>
-        </div>
-      );
-    }
-    
+  /*import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+interface Transaction {
+  id: string;
+  txHash: string;
+  productName: string;
+  amount: number;
+  timestamp: Date;
+}
+
+interface HistoryProps {
+  transactions: Transaction[];
+}
 
 
+const History = ({ transactions }: HistoryProps) => {
+  const navigate = useNavigate();
+  const [visibleMonths, setVisibleMonths] = useState(MONTHS_PER_BATCH);
+  const MONTHS_PER_BATCH = 3;
 
+  const currentMonth = month[0];
+  const [openMonths, setOpenMonths] = useState<Record<string, boolean>>(() => ({
+    [currentMonthKey]: true,
+  }));
 
+  useEffect(() => {
+    const onScroll = () => {
+      if (
+        window.innerHeight + window.scrollY >=
+        document.body.offsetHeight - 300
+      ) {
+        setVisibleMonths((v) =>
+          Math.min(v + MONTHS_PER_BATCH, monthKeys.length)
+        );
+      }
+    };
 
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [monthKeys.length]);
 
+  const toggleMonth = (key: string) => {
+    setOpenMonths((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
+  return (
+    <div
+      className="
+        min-h-screen p-8 relative grid-bg-pattern grid-animate-scroll
+        bg-white text-emerald-900
+      "
+    >
+      {/* Decorative corners *}
+      <div className="fixed top-8 left-8 w-8 h-8 border-l-4 border-t-4 border-emerald-800/20" />
+      <div className="fixed top-8 right-8 w-8 h-8 border-r-4 border-t-4 border-emerald-800/20" />
+      <div className="fixed bottom-8 left-8 w-8 h-8 border-l-4 border-b-4 border-emerald-800/20" />
+      <div className="fixed bottom-8 right-8 w-8 h-8 border-r-4 border-b-4 border-emerald-800/20" />
 
-
-
-
-    /* eslint-disable @typescript-eslint/no-explicit-any *
-    import { useEffect, useState, useCallback } from "react";
-    import { motion } from "framer-motion";
-    import { Plus, Zap, TrendingUp, Package, Loader2 } from "lucide-react";
-    import DashboardLayout from "./dashboard-layout";
-    import TransactionTable from "./transaction-table";
-    import ProductCard from "./product-card";
-    import ProductModal from "./product-modal";
-    import { useNavigate } from "react-router-dom";
-    
-    interface Split {
-      id: string;
-      wallet_address: string;
-      percentage: number;
-      isOwner?: boolean;
-    }
-    
-    interface Product {
-      id: string;
-      product_name: string;
-      price: number;
-      description?: string;
-      splits: Split[];
-    }
-    
-    interface Transaction {
-      id: string;
-      txHash: string;
-      productName: string;
-      amount: number;
-      timestamp: Date;
-    }
-    
-    export default function DashboardPage() {
-      const navigate = useNavigate();
-      const [isLoading, setIsLoading] = useState(true);
-      const [products, setProducts] = useState<Product[]>([]);
-      const [totalRevenue, setTotalRevenue] = useState(0);
-      const [transactions, setTransactions] = useState<Transaction[]>([]);
-    
-      const [isModalOpen, setIsModalOpen] = useState(false);
-      const [merchantWallet, setMerchantWallet] = useState<string>("");
-      const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-      console.log("hii");
-    
-      const loadDashboardData = useCallback(async () => {
-        try {
-          setIsLoading(true); // Start Spinner
-    
-          const token = localStorage.getItem("token");
-          if (!token) {
-            navigate("/login");
-            return;
-          }
-    
-          const res = await fetch("http://localhost:8000/api/dashboard", {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          });
-    
-          if (!res.ok) {
-            if (res.status === 401) {
-              alert("Session expired. Please login again");
-              navigate("/login");
-            }
-            throw new Error("Can't load dashboard data");
-          }
-    
-          const data = await res.json();
-    
-          if (data.inventory) {
-            setProducts(
-              data.inventory.map((item: any) => ({
-                id: item.id.toString(),
-                product_name: item.name,
-                price: item.price,
-                splits: item.splits
-                  ? item.splits.map((s: any) => ({
-                      id: s.id?.toString() || crypto.randomUUID(),
-                      wallet_address: s.wallet_address,
-                      percentage: s.percentage,
-                      isOwner: s.is_owner || false,
-                    }))
-                  : [],
-              }))
-            );
-          }
-    
-          // 2. PROCESS TRANSACTIONS
-          if (data.recent_sales) {
-            setTransactions(
-              data.recent_sales.map((sale: any) => ({
-                id: sale.tx_hash,
-                txHash: sale.tx_hash,
-                productName: sale.item_sold,
-                amount: sale.earned,
-                timestamp: new Date(sale.date),
-              }))
-            );
-          }
-    
-          if (data.stats) {
-            setTotalRevenue(data.stats.total_revenue);
-          }
-          if (data.merchant_profile) {
-            setMerchantWallet(data.merchant_profile.wallet);
-          }
-        } catch (err) {
-          console.error("Dashboard Fetch Error:", err);
-        } finally {
-          setIsLoading(false);
-        }
-      }, [navigate]);
-    
-      useEffect(() => {
-        loadDashboardData();
-      }, [loadDashboardData]);
-    
-      const handleEdit = (product: Product) => {
-        setEditingProduct(product);
-        setIsModalOpen(true);
-      };
-    
-      const handleCloseModal = () => {
-        setEditingProduct(null);
-        setIsModalOpen(false);
-      };
-    
-      const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this stream?")) return;
-         try {
-          const token = localStorage.getItem("token");
-          await fetch(`http://localhost:8000/api/delete-product/${id}`, {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          loadDashboardData();
-        } catch (error) {
-          console.error("Failed to delete", error);
-        }
-      };
-    
-      return (
-        <DashboardLayout>
-          {/* LOADING OVERLAY /}
-          {isLoading && (
-            <div className="fixed inset-0 z-40 bg-background/50 backdrop-blur-sm flex items-center justify-center">
-              <div className="bg-card border border-border p-4 shadow-xl flex items-center gap-3">
-                <Loader2 className="w-6 h-6 text-accent animate-spin" />
-                <span className="font-mono text-sm text-foreground">
-                  Updating Dashboard...
-                </span>
-              </div>
-            </div>
-          )}
-    
-          <div className="space-y-8">
-            {/* STATS *}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-1 sm:grid-cols-3 gap-4"
-            >
-              {/* Total Inflow *}
-              <div className="border-2 border-border bg-card p-5">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 border border-border flex items-center justify-center bg-secondary">
-                    <TrendingUp className="w-4 h-4 text-accent" />
-                  </div>
-                  <span className="text-xs font-mono text-muted-foreground">
-                    TOTAL_INFLOW
-                  </span>
-                </div>
-                <p className="text-2xl font-bold font-mono text-foreground">
-                  {totalRevenue.toLocaleString()}
-                  <span className="text-sm text-muted-foreground ml-1">MNEE</span>
-                </p>
-              </div>
-    
-              {/* Active Streams /}
-              <div className="border-2 border-border bg-card p-5">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 border border-border flex items-center justify-center bg-secondary">
-                    <Package className="w-4 h-4 text-accent" />
-                  </div>
-                  <span className="text-xs font-mono text-muted-foreground">
-                    ACTIVE_STREAMS
-                  </span>
-                </div>
-                <p className="text-2xl font-bold font-mono text-foreground">
-                  {products.length}
-                </p>
-              </div>
-    
-              {/* Transactions z/}
-              <div className="border-2 border-border bg-card p-5">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 border border-border flex items-center justify-center bg-secondary">
-                    <Zap className="w-4 h-4 text-accent" />
-                  </div>
-                  <span className="text-xs font-mono text-muted-foreground">
-                    TRANSACTIONS
-                  </span>
-                </div>
-                <p className="text-2xl font-bold font-mono text-foreground">
-                  {transactions.length}
-                </p>
-              </div>
-            </motion.div>
-    
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="w-full border-2 border-dashed border-accent/50 bg-accent/5 
-                            hover:bg-accent/10 hover:border-accent transition-all p-8 md:p-12 group"
-              >
-                <div className="flex flex-col items-center gap-4">
-                  <div className="w-16 h-16 border-2 border-accent bg-accent/10 flex items-center justify-center group-hover:glow-accent transition-all">
-                    <Plus className="w-8 h-8 text-accent" strokeWidth={2.5} />
-                  </div>
-                  <div className="text-center">
-                    <h3 className="text-xl font-bold text-foreground mb-1">
-                      Initialize New Revenue Stream
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Create a programmable split for your next product or
-                      collaboration
-                    </p>
-                  </div>
-                </div>
-              </button>
-            </motion.div>
-    
-            {/* ACTIVE STREAMS *}
-            {products.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-sm font-bold text-foreground">
-                      Active Streams
-                    </h3>
-                    <p className="text-xs font-mono text-muted-foreground">
-                      PRODUCT_REGISTRY
-                    </p>
-                  </div>
-                </div>
-    
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {products.map((product, index) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      index={index}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                    />
-                  ))}
-                </div>
-              </motion.div>
-            )}
-    
-            {/* TRANSACTION TABLE *}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <TransactionTable transactions={transactions} />
-            </motion.div>
+      <div className="max-w-6xl mx-auto space-y-16">
+        {/* HEADER *}
+        <header className="space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-lime-400" />
+            <span className="text-xs font-mono text-emerald-800/60 tracking-wide">
+              HISTORY
+            </span>
           </div>
-    
-          {/* PRODUCT MODAL /}
-          <ProductModal
-            isOpen={isModalOpen}
-            onClose={handleCloseModal}
-            product={editingProduct}
-            merchantWallet={merchantWallet}
-            onSuccess={loadDashboardData}
-          />
-        </DashboardLayout>
-      );
-    }
-    
 
+          <h1 className="text-3xl font-bold text-emerald-900">
+            Transaction History
+          </h1>
 
-
-
-
-    <button
-              key={section}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors ${
-                activeSection === section
-                  ? "bg-[#a8e6cf]/20 border-l-2 border-[#a8e6cf] text-[#1a3a2a]"
-                  : "text-[#1a3a2a]/60 hover:text-[#1a3a2a] hover:bg-[#f5f5f5]"
-              }`}
-              onClick={() => setActiveSection(section as SectionKey)}
-            ></button>
-
-            <main className="lg:ml-64 pt-16 lg:pt-0">
-        {/* Desktop Header /}
-        <header className="hidden lg:flex items-center justify-between px-8 py-4 bg-white border-b-2 border-[#1a3a2a]/20">
-          <div>
-            <h1 className="text-xl font-bold text-[#1a3a2a]">Dashboard</h1>
-            <p className="text-sm text-[#1a3a2a]/50">
-              Manage your revenue streams
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#a8e6cf]/20 border border-[#a8e6cf]/30">
-              <div className="w-2 h-2 bg-[#a8e6cf] rounded-full animate-pulse" />
-              <span className="text-xs font-mono text-[#1a3a2a]">
-                CONNECTED
-              </span>
-            </div>
-          </div>
+          <p className="text-sm text-emerald-800/60 max-w-xl">
+            Complete ledger of all inflow events. Grouped by month for review
+            and auditing.
+          </p>
         </header>
 
-        <div className="p-4 lg:p-8">{children}</div>
-      </main>
+        {/* MONTH SECTIONS *}
+        <div className="space-y-20">
+          {monthKeys.slice(0, visibleMonths).map((key) => {
+            const txs = grouped[key];
+            const isOpen = openMonths[key];
+            const monthLabel = formatMonthLabel(txs[0].timestamp);
 
+            const totalAmount = txs.reduce((sum, tx) => sum + tx.amount, 0);
 
+            return (
+              <section key={key} className="space-y-6">
+                {/* Sticky Month Header /}
+                <div className="sticky top-4 z-10 bg-white/90 backdrop-blur">
+                  <button
+                    onClick={() => toggleMonth(key)}
+                    className="
+                      w-full flex items-center justify-between
+                      border border-emerald-800/10
+                      px-5 py-3 hover:bg-lime/5 transition
+                    "
+                  >
+                    <div className="flex items-center gap-3">
+                      {isOpen ? (
+                        <ChevronDown className="w-4 h-4 text-emerald-800/60" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-emerald-800/60" />
+                      )}
+                      <span className="font-mono text-sm text-emerald-900">
+                        {monthLabel}
+                      </span>
+                    </div>
 
+                    <span className="text-xs font-mono text-emerald-800/50">
+                      {txs.length} txs
+                    </span>
+                  </button>
+                </div>
 
+                {/* Collapsible content /}
+                {isOpen && (
+                  <div className="space-y-4">
+                    {/* Month Summary /}
+                    <div className="flex justify-between text-xs font-mono text-emerald-800/50 px-1">
+                      <span>{txs.length} transactions</span>
+                      <span>Total: {totalAmount.toFixed(2)} MNEE</span>
+                    </div>
 
+                    {/* Table /}
+                    <div className="border border-emerald-800/10 overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/40">
+                          <tr className="border-b border-emerald-800/10">
+                            <th className="px-5 py-3 text-left font-mono text-xs text-emerald-800/50">
+                              TX HASH
+                            </th>
+                            <th className="px-5 py-3 text-left font-mono text-xs text-emerald-800/50">
+                              PRODUCT
+                            </th>
+                            <th className="px-5 py-3 text-right font-mono text-xs text-emerald-800/50">
+                              AMOUNT
+                            </th>
+                            <th className="px-5 py-3 text-right font-mono text-xs text-emerald-800/50">
+                              TIME
+                            </th>
+                          </tr>
+                        </thead>
 
+                        <tbody className="divide-y divide-emerald-800/5">
+                          {txs.map((tx) => (
+                            <tr
+                              key={tx.id}
+                              className="hover:bg-lime/5 transition group"
+                            >
+                              <td className="px-5 py-3 font-mono">
+                                <div className="flex items-center gap-2">
+                                  {truncateHash(tx.txHash)}
+                                  <ExternalLink
+                                    className="w-3 h-3 text-emerald-800/30 opacity-0 group-hover:opacity-100 cursor-pointer"
+                                    onClick={() => navigate(`/tx/${tx.txHash}`)}
+                                  />
+                                </div>
+                              </td>
 
+                              <td className="px-5 py-3">{tx.productName}</td>
 
+                              <td className="px-5 py-3 text-right font-mono tabular-nums">
+                                {tx.amount.toFixed(2)}{" "}
+                                <span className="text-emerald-800/50">
+                                  MNEE
+                                </span>
+                              </td>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      <div className="min-h-screen bg-[#f5f5f5] grid-bg">
-      {/* Mobile Header /}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b-2 border-[#1a3a2a]/20">
-        <div className="flex items-center justify-between px-4 py-3">
-          <a href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#1a3a2a] flex items-center justify-center">
-              <span className="text-[#a8e6cf] font-bold text-sm">SS</span>
-            </div>
-            <span className="font-bold text-[#1a3a2a]">SplitStream</span>
-          </a>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 border border-[#1a3a2a]/20"
-          >
-            {sidebarOpen ? (
-              <X className="w-5 h-5 text-[#1a3a2a]" />
-            ) : (
-              <Menu className="w-5 h-5 text-[#1a3a2a]" />
-            )}
-          </button>
+                              <td className="px-5 py-3 text-right font-mono text-xs text-emerald-800/50">
+                                {formatTime(tx.timestamp)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </div>
-      </header>
-
-      {/* Sidebar *}
-      <aside
-        className={`fixed top-0 left-0 z-40 h-full w-64 bg-white border-r-2 border-[#1a3a2a]/20 transform transition-transform duration-200 lg:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        {/* Logo /}
-        <div className="p-6 border-b border-[#1a3a2a]/10">
-          <a href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#1a3a2a] flex items-center justify-center relative">
-              <span className="text-[#a8e6cf] font-bold">SS</span>
-              <div className="absolute -top-0.5 -left-0.5 w-2 h-2 border-t border-l border-[#a8e6cf]" />
-              <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 border-b border-r border-[#a8e6cf]" />
-            </div>
-            <div>
-              <span className="font-bold text-[#1a3a2a] text-lg">
-                SplitStream
-              </span>
-              <span className="block text-xs text-[#1a3a2a]/50 font-mono">
-                v1.0.0
-              </span>
-            </div>
-          </a>
-        </div>
-
-        {/* Merchant Info /}
-        <div className="p-4 mx-4 mt-4 bg-[#f5f5f5] border border-[#1a3a2a]/10">
-          <span className="text-xs text-[#1a3a2a]/50 font-mono uppercase tracking-wider">
-            Merchant
-          </span>
-
-          {loading ? (
-            <p className="text-[#1a3a2a]/50 text-sm mt-1">Loading...</p>
-          ) : merchant ? (
-            <>
-              <p className="font-semibold text-[#1a3a2a] truncate mt-1">
-                {merchant.username.charAt(0).toUpperCase() +
-                  merchant.username.slice(1).toLowerCase()}
-              </p>
-              <p className="text-xs text-[#1a3a2a]/50 font-mono truncate mt-1">
-                {merchant.wallet}
-              </p>
-            </>
-          ) : (
-            <p className="text-red-600 text-xs mt-1">Failed to load merchant</p>
-          )}
-        </div>
-
-        {/* Navigation /}
-        <nav className="p-4 mt-4">
-          <span className="text-xs text-[#1a3a2a]/40 font-mono uppercase tracking-wider px-3 mb-2 block">
-            Navigation
-          </span>
-
-          <div className="mt-6 w-full flex flex-col gap-2">
-            {Object.keys(sections).map((section) => (
-              <button
-                key={section}
-                className={`w-full flex items-center gap-3 px-3 py-3 transition-colors ${
-                  activeSection === section
-                    ? "bg-[#a8e6cf]/20 border-l-2 border-[#a8e6cf] text-[#1a3a2a]"
-                    : "text-[#1a3a2a]/60 hover:text-[#1a3a2a] hover:bg-[#f5f5f5]"
-                }`}
-                onClick={() => setActiveSection(section as SectionKey)}
-              >
-                {section}
-              </button>
-            ))}
-          </div>
-        </nav>
-
-        {/* Bottom Actions /}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-[#1a3a2a]/10">
-          <a
-            href="/"
-            className="flex items-center gap-3 px-3 py-2.5 text-[#1a3a2a]/60 hover:text-[#1a3a2a] hover:bg-[#f5f5f5] transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="text-sm font-medium">Exit Protocol</span>
-          </a>
-        </div>
-      </aside>
-
-      {/* Mobile Overlay *}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-[#1a3a2a]/20 z-30 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Main Content /}
-      <main>{sections[activeSection]}</main>
+      </div>
     </div>
-    */
+  );
+}
+
+export default History */
 }

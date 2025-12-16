@@ -36,7 +36,7 @@ const ProductCard = ({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
-      className="border-2 border-border bg-card card-hover p-5"
+      className="border-2 border-[#BED4C7] bg-[#FFFFFF] card-hover p-5"
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
@@ -50,13 +50,13 @@ const ProductCard = ({
         </div>
         <div className="flex gap-1">
           <button
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            className="h-8 w-8 text-[#F2F6F4]-foreground hover:text-foreground"
             onClick={() => onEdit(product)}
           >
             <Edit2 className="w-4 h-4" />
           </button>
           <button
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            className="h-8 w-8 text-[#F2F6F4]-foreground hover:text-destructive"
             onClick={() => onDelete(product.id)}
           >
             <Trash2 className="w-4 h-4" />
@@ -66,7 +66,7 @@ const ProductCard = ({
 
       {/* Split visualization */}
       <div className="mb-4">
-        <div className="flex h-2 rounded-sm overflow-hidden bg-muted">
+        <div className="flex h-2 rounded-sm overflow-hidden bg-[#F2F6F4]">
           {product.splits.map((split, i) => (
             <div
               key={split.id}
@@ -84,7 +84,7 @@ const ProductCard = ({
 
       {/* Info */}
       <div className="flex items-center justify-between text-xs">
-        <div className="flex items-center gap-1 text-muted-foreground">
+        <div className="flex items-center gap-1 text-[#F2F6F4]-foreground">
           <Users className="w-3 h-3" />
           <span>
             {totalCollaborators > 0
@@ -94,7 +94,7 @@ const ProductCard = ({
               : "Solo stream"}
           </span>
         </div>
-        <span className="font-mono text-muted-foreground">
+        <span className="font-mono text-[#F2F6F4]-foreground">
           {product.splits.length} split{product.splits.length > 1 ? "s" : ""}
         </span>
       </div>

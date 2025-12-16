@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Save, User, AlertTriangle, Lock, EyeOff, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
 export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -145,7 +146,8 @@ export default function SettingsPage() {
 
       if (!res.ok) throw new Error("Failed to delete account");
 
-      alert("Account deleted successfully!");
+      toast.success("Account deleted successfully!");
+      localStorage.clear();
       navigate("/setup");
     } catch (err) {
       console.error(err);
@@ -164,10 +166,10 @@ export default function SettingsPage() {
         "
       >
         {/* Decorative corners */}
-        <div className="fixed top-8 left-8 w-8 h-8 border-l-2 border-t-2 border-emerald-800/20" />
-        <div className="fixed top-8 right-8 w-8 h-8 border-r-2 border-t-2 border-emerald-800/20" />
-        <div className="fixed bottom-8 left-8 w-8 h-8 border-l-2 border-b-2 border-emerald-800/20" />
-        <div className="fixed bottom-8 right-8 w-8 h-8 border-r-2 border-b-2 border-emerald-800/20" />
+        <div className="fixed top-8 left-8 w-8 h-8 border-l-4 border-t-4 border-emerald-800/20" />
+        <div className="fixed top-8 right-8 w-8 h-8 border-r-4 border-t-4 border-emerald-800/20" />
+        <div className="fixed bottom-8 left-8 w-8 h-8 border-l-4 border-b-4 border-emerald-800/20" />
+        <div className="fixed bottom-8 right-8 w-8 h-8 border-r-4 border-b-4 border-emerald-800/20" />
 
         <div className="max-w-3xl mx-auto space-y-10">
           {/* HEADER */}
@@ -178,7 +180,7 @@ export default function SettingsPage() {
                 SETTINGS
               </span>
             </div>
-            <h1 className="text-3xl font-bold text-emerald-900">
+            <h1 className="text-3xl pt-5 lg:pt-2 font-bold text-emerald-900">
               Account Settings
             </h1>
           </div>
@@ -196,7 +198,7 @@ export default function SettingsPage() {
                 <User className="w-5 h-5" /> Profile
               </h2>
               <p className="text-sm font-mono text-emerald-700/60">
-                Merchant identity & payout configuration
+                Merchant identity & payout settings
               </p>
             </div>
 
@@ -293,7 +295,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => setShowOld((prev) => !prev)}
-                  className="absolute right-3 top-12 flex items-center justify-center text-emerald-800"
+                  className="absolute right-3 top-10 flex items-center justify-center text-emerald-800"
                 >
                   {showOld ? (
                     <EyeOff className="w-5 h-5" />
@@ -317,7 +319,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => setShowNew((prev) => !prev)}
-                  className="absolute right-3 top-12 flex items-center justify-center text-emerald-800"
+                  className="absolute right-3 top-10 flex items-center justify-center text-emerald-800"
                 >
                   {showNew ? (
                     <EyeOff className="w-5 h-5" />
@@ -341,7 +343,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => setShowConfirm((prev) => !prev)}
-                  className="absolute right-3 top-12 flex items-center justify-center text-emerald-800"
+                  className="absolute right-3 top-10 flex items-center justify-center text-emerald-800"
                 >
                   {showConfirm ? (
                     <EyeOff className="w-5 h-5" />
@@ -378,10 +380,12 @@ export default function SettingsPage() {
 
             <div className="p-6 space-y-4">
               <p className="text-sm font-mono text-red-700/70">
-                Clear all local data including merchant profile and product
-                streams.
+                <span className="font-semibold">Delete Your Account</span>
+                <br />
+                This will permanently delete your account, including your
+                profile, products, and all revenue streams. This action cannot
+                be undone.
               </p>
-
               <button
                 className="
                   px-6 py-3 border-2 border-red-700 text-red-700 

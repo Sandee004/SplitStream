@@ -73,6 +73,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 
 pwd_cxt = CryptContext(schemes=['bcrypt'], deprecated="auto")
 
+
 @app.post("/api/setup", tags=["User"], response_model=schemas.UserResponse)
 def setup(request: schemas.User, db: Session = Depends(get_db)):
     username = request.username.lower()
@@ -213,7 +214,7 @@ def dashboard(
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail="Dashboard error")
-    
+
 
 @app.get("/api/products", tags=["Product"], response_model=list[schemas.ProductResponse])
 def get_products(
@@ -422,7 +423,6 @@ def change_password(
     db.refresh(user)
 
     return {"message": "Password updated successfully"}
-
 
 
 @app.delete("/api/delete-account", tags=["User"])
