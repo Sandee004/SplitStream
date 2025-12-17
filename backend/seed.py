@@ -1,8 +1,16 @@
 #seed.py
-from .imports import uuid, random, Session, CryptContext
+from .imports import uuid, random, Session, CryptContext, secrets, string
 from . import models
 
 pwd_cxt = CryptContext(schemes=['bcrypt'], deprecated="auto")
+
+def generate_unique_slug(db: Session, length: int = 8) -> str:
+    alphabet = string.ascii_lowercase + string.digits
+    while True:
+        slug = ''.join(secrets.choice(alphabet) for _ in range(length))
+        exists = db.query(models.User).filter(models.User.unique_slug == slug).first()
+        if not exists:
+            return slug
 
 def seed_demo_user(db: Session):
     if db.query(models.User).filter(models.User.username == "example").first():
@@ -13,7 +21,8 @@ def seed_demo_user(db: Session):
         username="example",
         email="example@gmail.com",
         password=pwd_cxt.hash("1234"),
-        wallet_address="0xMerchantWallet123"
+        wallet_address="0xMerchantWallet123",
+        unique_slug="steezed"
     )
     db.add(merchant)
     db.commit()

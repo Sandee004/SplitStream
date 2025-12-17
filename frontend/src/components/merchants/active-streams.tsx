@@ -34,7 +34,9 @@ export default function ActiveStreams() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const storedWallet = localStorage.getItem("walletAddress") || "";
+      const storedWallet = JSON.parse(
+        localStorage.getItem("merchantData") || "{}"
+      ).wallet;
       setMerchantWallet(storedWallet);
 
       if (!token) {

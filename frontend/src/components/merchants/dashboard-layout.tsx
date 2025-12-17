@@ -7,6 +7,8 @@ import {
   GitBranch,
   History,
   Settings,
+  Check,
+  Copy,
 } from "lucide-react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 
@@ -20,6 +22,15 @@ export default function DashboardLayout() {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const [copied, setCopied] = useState(false);
+  const [storeUrl, setStoreLink] = useState("");
+
+  const handleCopy = async () => {
+    if (!storeUrl) return;
+    await navigator.clipboard.writeText(storeUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   // Fetch merchant info
   useEffect(() => {
@@ -49,7 +60,9 @@ export default function DashboardLayout() {
           wallet: data.merchant_profile.wallet,
         };
         setMerchant(merchantData);
-        localStorage.setItem("walletAddress", merchantData.wallet);
+        const slug = data.merchant_profile.slug;
+        setStoreLink(`${window.location.origin}/store/${slug}`);
+        localStorage.setItem("Merchant Data", JSON.stringify(merchantData));
       } catch (error) {
         console.error("Error fetching merchant:", error);
       } finally {
@@ -142,6 +155,33 @@ export default function DashboardLayout() {
               <p className="text-xs text-[#1a3a2a]/50 font-mono truncate mt-1">
                 {merchant.wallet}
               </p>
+
+              {storeUrl && (
+                <div
+                  className="flex items-center gap-2 px-3 py-1.5 
+                             bg-[#1a3a2a]/5 border border-[#BED4C7]
+                             font-mono text-xs text-[#1a3a2a]"
+                >
+                  <span className="hidden sm:inline">{storeUrl}</span>
+
+                  <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-1 text-accent hover:opacity-80 transition"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-3 h-3" />
+                        <span>COPIED</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        <span>COPY_LINK</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <p className="text-red-600 text-xs mt-1">Failed to load merchant</p>

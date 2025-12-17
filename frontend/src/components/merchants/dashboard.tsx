@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Plus, Zap, TrendingUp, Package, Loader2 } from "lucide-react";
+import {
+  Plus,
+  Zap,
+  TrendingUp,
+  Package,
+  Loader2,
+} from "lucide-react";
 import TransactionTable from "./transaction-table";
 import ProductCard from "./product-card";
 import ProductModal from "./product-modal";
@@ -40,6 +46,7 @@ export default function DashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [merchantWallet, setMerchantWallet] = useState<string>("");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  
 
   const loadDashboardData = useCallback(async () => {
     try {
@@ -95,7 +102,6 @@ export default function DashboardPage() {
       );
 
       setTotalRevenue(data.stats.total_revenue);
-
       setMerchantWallet(data.merchant_profile.wallet);
     } catch (err) {
       console.error("Dashboard Fetch Error:", err);
@@ -154,6 +160,7 @@ export default function DashboardPage() {
             Manage your revenue streams
           </p>
         </div>
+
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-[#a8e6cf]/20 border border-[#a8e6cf]/30">
             <div className="w-2 h-2 bg-[#a8e6cf] rounded-full animate-pulse" />

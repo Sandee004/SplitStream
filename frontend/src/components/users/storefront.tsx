@@ -1,118 +1,150 @@
-{
-  /*import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { CheckCircle2, ArrowLeft, Store } from 'lucide-react';
-import { useMerchantStore } from '@/stores/merchantStore';
-import StoreProductCard from '@/components/StoreProductCard';
+import { useParams } from "react-router-dom";
+import { motion } from "framer-motion";
+import { CheckCircle, Store } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import PurchaseModal from "./purchaseModal";
+
+/* =======================
+   Types
+======================= */
+
+type Product = {
+  id: number;
+  product_name: string;
+  price: number;
+};
 
 const Storefront = () => {
-  const { merchantId } = useParams();
-  const { alias, products } = useMerchantStore();
+  const [isLoading, setIsLoading] = useState(false);
+  const [merchantProducts, setMerchantProducts] = useState<Product[]>([]);
+  const { slug } = useParams<{ slug: string }>();
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  // In a real app, we'd fetch merchant data by merchantId
-  // For now, we use the local store
-  const merchantName = alias || 'Anonymous Merchant';
-  const merchantProducts = products;
+  const getProducts = useCallback(async () => {
+    if (!slug) return;
+    try {
+      setIsLoading(true);
+      const res = await fetch(`http://localhost:8000/api/store/${slug}`);
+      if (!res.ok) throw new Error("Failed to load store products");
+      const data = await res.json();
+      setMerchantProducts(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [slug]);
+
+  useEffect(() => {
+    getProducts();
+  }, [getProducts]);
 
   return (
-    <div className="min-h-screen bg-background grid-pattern">
-      {/* Header /}
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <Link 
-              to="/" 
-              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="text-sm">Back</span>
-            </Link>
+    <div className="min-h-screen p-8 grid-bg-pattern grid-animate-scroll bg-white text-emerald-900">
+      {/* Decorative corners */}
+      <div className="fixed top-8 left-8 w-8 h-8 border-l-4 border-t-4 border-emerald-800/70" />
+      <div className="fixed top-8 right-8 w-8 h-8 border-r-4 border-t-4 border-emerald-800/70" />
+      <div className="fixed bottom-8 left-8 w-8 h-8 border-l-4 border-b-4 border-emerald-800/70" />
+      <div className="fixed bottom-8 right-8 w-8 h-8 border-r-4 border-b-4 border-emerald-800/70" />
 
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded border-2 border-border flex items-center justify-center bg-secondary">
-                <Store className="w-5 h-5 text-foreground" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-foreground tracking-tight">
-                  {merchantName}
-                </h1>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
-                  <span className="text-xs text-muted-foreground font-mono">
-                    VERIFIED STREAM
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="w-16" /> {/* Spacer for alignment /}
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content /}
-      <main className="max-w-6xl mx-auto px-6 py-12">
-        {/* Title Section /}
+      {/* ================= MAIN ================= */}
+      <main className="max-w-6xl mx-auto space-y-12">
+        {/* Title */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+          className="text-center"
         >
-          <p className="text-sm font-mono text-muted-foreground mb-2">
-            MERCHANT_ID: {merchantId || 'local'}
-          </p>
-          <h2 className="text-3xl font-bold text-foreground tracking-tight mb-2">
-            Available Streams
-          </h2>
-          <p className="text-muted-foreground">
-            Select a product to initialize programmable payment
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <div className="w-2 h-2 bg-lime-400" />
+            <span className="text-xs font-mono text-emerald-700/60">
+              LIVE STOREFRONT
+            </span>
+          </div>
+          <h2 className="text-3xl font-bold mb-2">Available Products</h2>
+          <p className="text-emerald-700/70">
+            Select a product to get and make direct payment
           </p>
         </motion.div>
 
-        {/* Products Grid /}
-        {merchantProducts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {merchantProducts.map((product, index) => (
-              <StoreProductCard
+        {/* Loading */}
+        {isLoading && (
+          <div className="text-center py-20 font-mono text-emerald-700/60">
+            Getting products…
+          </div>
+        )}
+
+        {/* Products */}
+        {!isLoading && merchantProducts.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {merchantProducts.map((product) => (
+              <div
                 key={product.id}
-                product={product}
-                index={index}
-              />
+                className="relative border-2 border-emerald-800 bg-white p-6"
+              >
+                {/* corners */}
+                <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-lime-400" />
+                <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-lime-400" />
+                <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-lime-400" />
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-lime-400" />
+
+                <h3 className="text-lg font-semibold mb-2">
+                  {product.product_name}
+                </h3>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-xl font-bold">
+                    {product.price} MNEE
+                  </span>
+                  <span className="text-xs flex gap-3 items-center justify-center font-mono text-emerald-700/60">
+                    <CheckCircle />
+                    Available
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedProduct(product)}
+                  className="hover:cursor-pointer w-full py-2.5 mt-3 mb-1 rounded-md 
+                   bg-lime-400 hover:bg-lime-500 
+                   text-emerald-900 text-lg font-bold 
+                   transition-colors"
+                >
+                  Buy now
+                </button>
+              </div>
             ))}
           </div>
-        ) : (
+        )}
+
+        {/* Empty State */}
+        {!isLoading && merchantProducts.length === 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center py-20 border-2 border-dashed border-border"
+            className="border-2 border-dashed border-emerald-800/40 p-16 text-center"
           >
-            <Store className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              No Active Streams
-            </h3>
-            <p className="text-muted-foreground text-sm">
-              This merchant hasn't deployed any revenue streams yet.
+            <Store className="w-12 h-12 mx-auto mb-4 text-emerald-700/50" />
+            <h3 className="text-lg font-semibold mb-2">No Products</h3>
+            <p className="text-sm font-mono text-emerald-700/60">
+              This merchant hasn’t added any products yet.
             </p>
           </motion.div>
         )}
 
-        {/* Footer Info /}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="mt-16 text-center"
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-2 border border-border bg-secondary/50 text-xs text-muted-foreground font-mono">
-            <span className="w-2 h-2 bg-accent rounded-full animate-pulse" />
-            SPLITSTREAM PROTOCOL v1.0
+        {/* Footer */}
+        <div className="pt-16 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 border-2 border-emerald-800 bg-gray-100 text-xs font-mono text-emerald-700/70">
+            <span className="w-2 h-2 bg-lime-400 animate-pulse" />
+            VERIFIED PAYMENT INFRASTRUCTURE
           </div>
-        </motion.div>
+        </div>
       </main>
+
+      <PurchaseModal
+        product={selectedProduct}
+        onClose={() => setSelectedProduct(null)}
+      />
     </div>
   );
 };
 
 export default Storefront;
-*/
-}

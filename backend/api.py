@@ -1,4 +1,4 @@
-from .imports import FastAPI, CORSMiddleware, os, StaticFiles, HTTPException, FileResponse, datetime, timedelta, jwt, Session, Depends, status, IntegrityError, OAuth2PasswordBearer, HTTPBearer, CryptContext, Security, ExpiredSignatureError, JWTError, SQLAlchemyError, joinedload
+from .imports import FastAPI, CORSMiddleware, os, StaticFiles, HTTPException, FileResponse, datetime, timedelta, jwt, Session, Depends, status, IntegrityError, OAuth2PasswordBearer, HTTPBearer, CryptContext, Security, ExpiredSignatureError, JWTError, SQLAlchemyError, joinedload, string, secrets
 from . import models, schemas
 from .database import engine, SessionLocal
 from .config import build_frontend, DIST_DIR, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -71,10 +71,20 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 
     return user
 
+def generate_unique_slug(db: Session, length: int = 8) -> str:
+    alphabet = string.ascii_lowercase + string.digits
+    while True:
+        slug = ''.join(secrets.choice(alphabet) for _ in range(length))
+        exists = db.query(models.User).filter(models.User.unique_slug == slug).first()
+        if not exists:
+            return slug
+        
 pwd_cxt = CryptContext(schemes=['bcrypt'], deprecated="auto")
+FRONTEND_BASE_URL = (
+    "http://localhost:8000"
+)
 
-
-@app.post("/api/setup", tags=["User"], response_model=schemas.UserResponse)
+@app.post("/api/setup", tags=["Merchant - Account"], response_model=schemas.UserResponse)
 def setup(request: schemas.User, db: Session = Depends(get_db)):
     username = request.username.lower()
     if db.query(models.User).filter(models.User.username == username).first():
@@ -94,6 +104,7 @@ def setup(request: schemas.User, db: Session = Depends(get_db)):
         email=request.email,
         password=hashed_password,
         wallet_address=request.walletAddress,
+        unique_slug=generate_unique_slug(db)
     )
     
     try:
@@ -122,7 +133,7 @@ def setup(request: schemas.User, db: Session = Depends(get_db)):
     }
 
 
-@app.post('/api/login', tags=['User'])
+@app.post('/api/login', tags=['Merchant - Account'])
 def login(request: schemas.Login, db: Session = Depends(get_db)):
     username = request.username.lower()
     user = db.query(models.User).filter(models.User.username == username).first()
@@ -201,7 +212,9 @@ def dashboard(
         return {
             "merchant_profile": {
                 "username": current_user.username,
-                "wallet": current_user.wallet_address
+                "wallet": current_user.wallet_address,
+                "slug": current_user.unique_slug,
+                "store_link": f"{FRONTEND_BASE_URL}/store/{current_user.unique_slug}"
             },
             "stats": {
                 "total_revenue": total_earnings,
@@ -216,12 +229,11 @@ def dashboard(
         raise HTTPException(status_code=500, detail="Dashboard error")
 
 
-@app.get("/api/products", tags=["Product"], response_model=list[schemas.ProductResponse])
+@app.get("/api/products", tags=["Merchant - Products"], response_model=list[schemas.ProductResponse])
 def get_products(
     db: Session = Depends(get_db),
     current_user: models.User = Security(get_current_user),
 ):
-    # Fetch products owned by merchant
     products = db.query(models.Products).filter(
         models.Products.merchant_id == current_user.id
     ).all()
@@ -232,7 +244,7 @@ def get_products(
     return products
 
 
-@app.post("/api/add-product", tags=["Product"], response_model=schemas.ProductResponse)
+@app.post("/api/add-product", tags=["Merchant - Products"], response_model=schemas.ProductResponse)
 def add_product(request: schemas.AddProduct,
     db: Session = Depends(get_db),
     current_user: models.User = Security(get_current_user)):
@@ -271,7 +283,7 @@ def add_product(request: schemas.AddProduct,
         raise HTTPException(500, "Failed to create product")
 
 
-@app.put("/api/update-product/{product_id}", tags=["Product"], response_model=schemas.ProductResponse)
+@app.put("/api/update-product/{product_id}", tags=["Merchant - Products"], response_model=schemas.ProductResponse)
 def update_product(
     product_id: int,
     request: schemas.AddProduct,
@@ -324,7 +336,7 @@ def update_product(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.delete("/api/delete-product/{product_id}", tags=["Product"])
+@app.delete("/api/delete-product/{product_id}", tags=["Merchant - Products"])
 def delete_product(
     product_id: int,
     db: Session = Depends(get_db),
@@ -350,7 +362,7 @@ def delete_product(
         ) from e
 
 
-@app.get("/api/profile", tags=["User"], response_model=schemas.Profile)
+@app.get("/api/profile", tags=["Merchant - Account"], response_model=schemas.Profile)
 def profile(db: Session = Depends(get_db),
     current_user: models.User = Security(get_current_user),
     ):
@@ -365,7 +377,7 @@ def profile(db: Session = Depends(get_db),
     return profile
 
 
-@app.put("/api/profile", response_model=schemas.Profile, tags=["User"])
+@app.put("/api/profile", response_model=schemas.Profile, tags=["Merchant"])
 def update_profile(
     request: schemas.Profile,
     db: Session = Depends(get_db),
@@ -401,7 +413,7 @@ def update_profile(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/profile/password", tags=["User"])
+@app.post("/api/profile/password", tags=["Merchant"])
 def change_password(
     data: schemas.UpdatePassword,
     db: Session = Depends(get_db),
@@ -425,7 +437,7 @@ def change_password(
     return {"message": "Password updated successfully"}
 
 
-@app.delete("/api/delete-account", tags=["User"])
+@app.delete("/api/delete-account", tags=["Merchant"])
 def delete_account(
     db: Session = Depends(get_db),
     current_user: models.User = Security(get_current_user)
@@ -449,7 +461,7 @@ def delete_account(
         ) from e
 
 
-@app.get("/api/transactions", response_model=list[schemas.TransactionOut])
+@app.get("/api/transactions", tags=["Merchant"], response_model=list[schemas.TransactionOut])
 def get_transaction_history(
     db: Session = Depends(get_db),
     current_user: models.User = Security(get_current_user),
@@ -472,6 +484,24 @@ def get_transaction_history(
         )
         for tx in transactions
     ]
+
+
+######### Users #########
+@app.get("/api/store/{unique_slug}", tags="Client")
+def get_store_products(
+    unique_slug: str,
+    db: Session = Depends(get_db),
+):
+    merchant = (
+        db.query(models.User)
+        .filter(models.User.unique_slug == unique_slug)
+        .first()
+    )
+
+    if not merchant:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    return merchant.products
 
 
 # ------------------------------

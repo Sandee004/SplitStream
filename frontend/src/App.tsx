@@ -7,6 +7,7 @@ import LoginPage from "./components/merchants/login";
 import ActiveStreams from "./components/merchants/active-streams";
 import DashboardLayout from "./components/merchants/dashboard-layout";
 import History from "./components/merchants/history";
+import Storefront from "./components/users/storefront";
 
 export default function App() {
   return (
@@ -23,6 +24,8 @@ export default function App() {
           <Route path="streams" element={<ActiveStreams />} />
           <Route path="history" element={<History />} />
         </Route>
+
+        <Route path="/store/:slug" element={<Storefront />} />
       </Routes>
     </Router>
   );
