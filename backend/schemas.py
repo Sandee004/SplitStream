@@ -64,3 +64,12 @@ class TransactionOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PurchaseRequest(BaseModel):
+    product_id: int
+    quantity: int
+    slug: str
+
+class ConfirmPaymentRequest(BaseModel):
+    purchase_id: int
+    tx_hash: str

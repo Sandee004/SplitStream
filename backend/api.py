@@ -1,4 +1,4 @@
-from .imports import FastAPI, CORSMiddleware, os, StaticFiles, HTTPException, FileResponse, datetime, timedelta, jwt, Session, Depends, status, IntegrityError, OAuth2PasswordBearer, HTTPBearer, CryptContext, Security, ExpiredSignatureError, JWTError, SQLAlchemyError, joinedload, string, secrets
+from .imports import FastAPI, CORSMiddleware, os, StaticFiles, HTTPException, FileResponse, datetime, timedelta, jwt, Session, Depends, status, IntegrityError, OAuth2PasswordBearer, HTTPBearer, CryptContext, Security, ExpiredSignatureError, JWTError, SQLAlchemyError, joinedload, string, secrets, APIRouter, Web3
 from . import models, schemas
 from .database import engine, SessionLocal
 from .config import build_frontend, DIST_DIR, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -31,6 +31,20 @@ def get_db():
         yield db
     finally:
         db.close()
+
+ERC20_ABI = [
+    {
+        "constant": False,
+        "inputs": [
+            {"name": "_to", "type": "address"},
+            {"name": "_value", "type": "uint256"},
+        ],
+        "name": "transfer",
+        "outputs": [{"name": "", "type": "bool"}],
+        "type": "function",
+    }
+]
+
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     """Generate a JWT token."""
@@ -413,7 +427,7 @@ def update_profile(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/profile/password", tags=["Merchant"])
+@app.post("/api/profile/password", tags=["Merchant - Account"])
 def change_password(
     data: schemas.UpdatePassword,
     db: Session = Depends(get_db),
@@ -503,6 +517,195 @@ def get_store_products(
 
     return merchant.products
 
+
+w3 = Web3(Web3.HTTPProvider(os.environ["RPC_URL"]))
+
+MNEE_TOKEN = Web3.to_checksum_address(os.environ["MNEE_TOKEN_ADDRESS"])
+CHAIN_ID = int(os.environ["CHAIN_ID"])
+
+@app.post("/api/make-purchase")
+def make_purchase(
+    request: schemas.PurchaseRequest,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    merchant = db.query(models.User).filter(
+        models.User.unique_slug == request.slug
+    ).first()
+
+    if not merchant:
+        raise HTTPException(404, "Merchant not found")
+
+    product = db.query(models.Products).filter(
+        models.Products.id == request.product_id
+    ).first()
+
+    if not product:
+        raise HTTPException(404, "Product not found")
+
+    total_amount = product.price * request.quantity
+
+    purchase = models.Purchase(
+        merchant_id=merchant.id,
+        product_id=product.id,
+        quantity=request.quantity,
+        amount=total_amount,
+        status="pending",
+    )
+
+    db.add(purchase)
+    db.commit()
+    db.refresh(purchase)
+
+    return {
+        "purchase_id": purchase.id,
+        "amount": float(total_amount),
+        "merchant_wallet": merchant.wallet_address,
+        "token_address": MNEE_TOKEN,
+        "chain_id": CHAIN_ID,
+    }
+
+
+@app.post("/api/confirm-payment")
+def confirm_payment(
+    request: schemas.ConfirmPaymentRequest,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    purchase = db.query(models.Purchase).filter(
+        models.Purchase.id == request.purchase_id,
+        models.Purchase.status == "pending",
+    ).first()
+
+    if not purchase:
+        raise HTTPException(404, "Purchase not found or already processed")
+
+    tx_hash = request.tx_hash
+
+    try:
+        tx = w3.eth.get_transaction(tx_hash)
+        receipt = w3.eth.get_transaction_receipt(tx_hash)
+    except Exception:
+        raise HTTPException(400, "Invalid transaction hash")
+
+    # Must be ERC-20 contract call
+    if tx["to"] is None or tx["to"].lower() != MNEE_TOKEN.lower():
+        raise HTTPException(400, "Transaction is not MNEE token transfer")
+
+    contract = w3.eth.contract(address=MNEE_TOKEN, abi=ERC20_ABI)
+
+    try:
+        func, params = contract.decode_function_input(tx["input"])
+    except Exception:
+        raise HTTPException(400, "Failed to decode ERC20 transaction")
+
+    if func.fn_name != "transfer":
+        raise HTTPException(400, "Not a transfer() call")
+
+    to_address = params["_to"]
+    value = params["_value"]
+
+    merchant = db.query(models.User).get(purchase.merchant_id)
+
+    expected_amount = int(
+        w3.to_wei(purchase.amount, "ether")
+    )
+
+    if to_address.lower() != merchant.wallet_address.lower():
+        raise HTTPException(400, "Wrong recipient")
+
+    if value != expected_amount:
+        raise HTTPException(400, "Wrong token amount")
+
+    if receipt["status"] != 1:
+        raise HTTPException(400, "Transaction failed on-chain")
+
+    # ✅ Mark as paid
+    purchase.status = "paid"
+    purchase.tx_hash = tx_hash
+    db.commit()
+
+    return {"status": "paid"}
+
+"""
+from web3 import Web3
+w3 = Web3(Web3.HTTPProvider("https://polygon-rpc.com"))
+
+TOKEN_ADDRESS = Web3.to_checksum_address("0xYourToken")
+ERC20_ABI = [...]  # standard ERC20 ABI
+token = w3.eth.contract(address=TOKEN_ADDRESS, abi=ERC20_ABI)
+
+
+router = APIRouter()
+w3 = Web3(Web3.HTTPProvider("https://polygon-rpc.com"))
+
+@router.post("/purchase/{slug}")
+def purchase_product(
+    slug: str,
+    request: schemas.PurchaseRequest,
+    db: Session = Depends(get_db),
+):
+    merchant = db.query(models.User).filter(models.User.unique_slug == slug).first()
+    if not merchant:
+        raise HTTPException(status_code=404, detail="Merchant not found")
+
+    product = (
+        db.query(models.Products)
+        .filter(
+            models.Products.id == request.product_id,
+            #models.BaseProducts.merchant_id == merchant.id
+        )
+        .first()
+    )
+
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    total_amount = product.price * request.quantity
+
+    # 3️⃣ Verify transaction on-chain
+    try:
+        tx = w3.eth.get_transaction(request.tx_hash)
+        receipt = w3.eth.get_transaction_receipt(request.tx_hash)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid transaction hash")
+
+    if receipt.status != 1:
+        raise HTTPException(status_code=400, detail="Transaction failed")
+
+    sender = tx["from"]
+    value = tx["value"]  # native token (wei)
+
+    # ⚠️ If ERC20 → decode logs instead (recommended)
+    expected_wei = w3.to_wei(total_amount, "ether")
+
+    if value < expected_wei:
+        raise HTTPException(status_code=400, detail="Insufficient payment")
+
+    # 4️⃣ Revenue split calculation
+    splits = product.splits
+    if not splits:
+        raise HTTPException(status_code=400, detail="No split configuration")
+
+    for split in splits:
+        split_amount = (total_amount * split.percentage) // 100
+
+        db.add(
+            models.Transactions(
+                tx_hash=request.tx_hash,
+                amount=split_amount,
+                product_id=product.id,
+            )
+        )
+
+    db.commit()
+
+    return {
+        "status": "success",
+        "tx_hash": request.tx_hash,
+        "total": total_amount,
+    }
+"""
 
 # ------------------------------
 # Static Files & React Routing

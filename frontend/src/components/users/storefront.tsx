@@ -3,10 +3,15 @@ import { motion } from "framer-motion";
 import { CheckCircle, Store } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import PurchaseModal from "./purchaseModal";
+import Web3 from "web3";
 
-/* =======================
-   Types
-======================= */
+declare global {
+  interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ethereum?: any;
+    web3?: Web3;
+  }
+}
 
 type Product = {
   id: number;
@@ -19,6 +24,7 @@ const Storefront = () => {
   const [merchantProducts, setMerchantProducts] = useState<Product[]>([]);
   const { slug } = useParams<{ slug: string }>();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
   const getProducts = useCallback(async () => {
     if (!slug) return;
@@ -39,6 +45,27 @@ const Storefront = () => {
     getProducts();
   }, [getProducts]);
 
+  const connectWallet = async () => {
+    if (window.ethereum) {
+      try {
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts",
+        });
+
+        setWalletAddress(accounts[0]);
+      } catch (error) {
+        console.error("Wallet connection error:", error);
+        alert("Looks like you declined the connection request.");
+      }
+    } else {
+      alert("MetaMask isn't detected. Please install it to connect!");
+    }
+  };
+
+  const disconnectWallet = () => {
+    setWalletAddress(null);
+  };
+
   return (
     <div className="min-h-screen p-8 grid-bg-pattern grid-animate-scroll bg-white text-emerald-900">
       {/* Decorative corners */}
@@ -46,6 +73,21 @@ const Storefront = () => {
       <div className="fixed top-8 right-8 w-8 h-8 border-r-4 border-t-4 border-emerald-800/70" />
       <div className="fixed bottom-8 left-8 w-8 h-8 border-l-4 border-b-4 border-emerald-800/70" />
       <div className="fixed bottom-8 right-8 w-8 h-8 border-r-4 border-b-4 border-emerald-800/70" />
+
+      {/* Wallet Connect */}
+      <div className="fixed top-6 right-6 z-50">
+        <button
+          onClick={walletAddress ? disconnectWallet : connectWallet}
+          className="px-4 py-2 rounded-md border-2 border-emerald-800 
+               bg-lime-400 hover:bg-lime-500 
+               text-emerald-900 font-mono text-sm
+               transition-colors"
+        >
+          {walletAddress
+            ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+            : "Connect Wallet"}
+        </button>
+      </div>
 
       {/* ================= MAIN ================= */}
       <main className="max-w-6xl mx-auto space-y-12">
@@ -141,6 +183,8 @@ const Storefront = () => {
 
       <PurchaseModal
         product={selectedProduct}
+        slug={slug!}
+        walletAddress={walletAddress}
         onClose={() => setSelectedProduct(null)}
       />
     </div>

@@ -1,6 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Web3 from "web3";
 
 type Product = {
   id: number;
@@ -10,15 +12,106 @@ type Product = {
 
 type PurchaseModalProps = {
   product: Product | null;
+  slug: string;
+  walletAddress: string | null;
   onClose: () => void;
 };
 
-const PurchaseModal = ({ product, onClose }: PurchaseModalProps) => {
+const PurchaseModal = ({
+  product,
+  slug,
+  onClose,
+  walletAddress,
+}: PurchaseModalProps) => {
   const [quantity, setQuantity] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
 
   if (!product) return null;
-
   const total = product.price * quantity;
+
+  const makePurchase = async () => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("Unauthorized. Please login again.");
+      navigate("/login");
+      return;
+    }
+
+    if (!walletAddress) {
+      alert("Please connect wallet to make a transaction");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      // 1️⃣ Create purchase intent
+      const res = await fetch("http://localhost:8000/api/make-purchase", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          product_id: product.id,
+          quantity,
+          slug,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Failed to create purchase");
+      }
+
+      const { purchase_id, amount, merchant_wallet, chain_id } =
+        await res.json();
+
+      const web3 = new Web3(window.ethereum);
+
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: web3.utils.toHex(chain_id) }],
+      });
+
+      const tx = await web3.eth.sendTransaction({
+        from: walletAddress,
+        to: merchant_wallet,
+        value: web3.utils.toWei(amount.toString(), "ether"),
+      });
+
+      const txHash = tx.transactionHash;
+
+      const confirmRes = await fetch(
+        "http://localhost:8000/api/confirm-payment",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            purchase_id,
+            tx_hash: txHash,
+          }),
+        }
+      );
+
+      if (!confirmRes.ok) {
+        throw new Error("Payment verification failed");
+      }
+
+      alert("Payment successful!");
+      onClose();
+    } catch (err) {
+      console.error("Payment error:", err);
+      alert("Payment failed or was cancelled.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -95,10 +188,20 @@ const PurchaseModal = ({ product, onClose }: PurchaseModalProps) => {
 
           {/* CTA */}
           <button
-            className="w-full py-3 rounded-md bg-lime-400 hover:bg-lime-500 
-                       text-emerald-900 font-bold transition-colors"
+            onClick={makePurchase}
+            disabled={!walletAddress || isSubmitting}
+            className={`w-full py-3 rounded-md font-bold transition-colors
+    ${
+      walletAddress && !isSubmitting
+        ? "bg-lime-400 hover:bg-lime-500 text-emerald-900"
+        : "bg-gray-300 text-gray-500 cursor-not-allowed"
+    }`}
           >
-            Confirm Purchase
+            {isSubmitting
+              ? "Processing..."
+              : walletAddress
+              ? "Confirm Purchase"
+              : "Connect wallet to continue"}
           </button>
         </motion.div>
       </motion.div>

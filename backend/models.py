@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func, Numeric
 from sqlalchemy.orm import relationship
+from imports import datetime
 from .database import Base
 
 class User(Base):
@@ -46,3 +47,18 @@ class Transactions(Base):
 
     product_id = Column(Integer, ForeignKey("products.id"))
     product = relationship("Products", back_populates="sales")
+
+class Purchase(Base):
+    __tablename__ = "purchases"
+
+    id = Column(Integer, primary_key=True)
+    merchant_id = Column(Integer, ForeignKey("users.id"))
+    product_id = Column(Integer, ForeignKey("products.id"))
+
+    quantity = Column(Integer, nullable=False)
+    amount = Column(Numeric(18, 8), nullable=False)
+
+    status = Column(String, default="pending")  # pending | paid | failed
+    tx_hash = Column(String, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)

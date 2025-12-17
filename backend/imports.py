@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Security
+from fastapi import FastAPI, Depends, HTTPException, status, Security, APIRouter
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from passlib.context import CryptContext
@@ -15,3 +15,4 @@ from sqlalchemy.orm import joinedload
 from typing import List
 import secrets
 import string
+from web3 import Web3
