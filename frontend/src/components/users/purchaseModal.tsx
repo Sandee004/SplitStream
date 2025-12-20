@@ -1,13 +1,17 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import Web3 from "web3";
+
+/* =======================
+   TYPES
+======================= */
 
 type Product = {
   id: number;
   product_name: string;
-  price: number;
+  price: number; // smallest token unit
 };
 
 type PurchaseModalProps = {
@@ -17,6 +21,31 @@ type PurchaseModalProps = {
   onClose: () => void;
 };
 
+/* =======================
+   CONSTANTS
+======================= */
+
+// ERC20 minimal ABI (transfer only)
+const ERC20_ABI = [
+  {
+    constant: false,
+    inputs: [
+      { name: "_to", type: "address" },
+      { name: "_value", type: "uint256" },
+    ],
+    name: "transfer",
+    outputs: [{ name: "", type: "bool" }],
+    type: "function",
+  },
+];
+
+// Your token address
+const TOKEN_ADDRESS = "0xYOUR_MNEE_TOKEN_ADDRESS"; // 👈 replace
+
+/* =======================
+   COMPONENT
+======================= */
+
 const PurchaseModal = ({
   product,
   slug,
@@ -25,20 +54,12 @@ const PurchaseModal = ({
 }: PurchaseModalProps) => {
   const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const navigate = useNavigate();
 
   if (!product) return null;
-  const total = product.price * quantity;
+
+  const total = product.price * quantity; // already smallest unit
 
   const makePurchase = async () => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      alert("Unauthorized. Please login again.");
-      navigate("/login");
-      return;
-    }
-
     if (!walletAddress) {
       alert("Please connect wallet to make a transaction");
       return;
@@ -47,13 +68,12 @@ const PurchaseModal = ({
     try {
       setIsSubmitting(true);
 
-      // 1️⃣ Create purchase intent
+      /* =======================
+         1️⃣ Create purchase intent
+      ======================= */
       const res = await fetch("http://localhost:8000/api/make-purchase", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           product_id: product.id,
           quantity,
@@ -66,34 +86,49 @@ const PurchaseModal = ({
         throw new Error(errorData.detail || "Failed to create purchase");
       }
 
-      const { purchase_id, amount, merchant_wallet, chain_id } =
-        await res.json();
+      const {
+        transaction_id,
+        amount,
+        merchant_wallet,
+        chain_id,
+        token_address,
+      } = await res.json();
 
-      const web3 = new Web3(window.ethereum);
+      /* =======================
+         2️⃣ Switch chain
+      ======================= */
+      const web3 = new Web3(window.ethereum as any);
 
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
         params: [{ chainId: web3.utils.toHex(chain_id) }],
       });
 
-      const tx = await web3.eth.sendTransaction({
-        from: walletAddress,
-        to: merchant_wallet,
-        value: web3.utils.toWei(amount.toString(), "ether"),
-      });
+      /* =======================
+         3️⃣ ERC20 transfer
+         amount is already smallest unit
+      ======================= */
+      const tokenContract = new web3.eth.Contract(
+        ERC20_ABI as any,
+        token_address || TOKEN_ADDRESS
+      );
+
+      const tx = await tokenContract.methods
+        .transfer(merchant_wallet, amount)
+        .send({ from: walletAddress });
 
       const txHash = tx.transactionHash;
 
+      /* =======================
+         4️⃣ Confirm payment
+      ======================= */
       const confirmRes = await fetch(
         "http://localhost:8000/api/confirm-payment",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            purchase_id,
+            transaction_id,
             tx_hash: txHash,
           }),
         }
@@ -107,7 +142,7 @@ const PurchaseModal = ({
       onClose();
     } catch (err) {
       console.error("Payment error:", err);
-      alert("Payment failed or was cancelled.");
+      alert("Payment failed. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -122,7 +157,6 @@ const PurchaseModal = ({
         exit={{ opacity: 0 }}
         onClick={onClose}
       >
-        {/* Modal Card */}
         <motion.div
           onClick={(e) => e.stopPropagation()}
           initial={{ scale: 0.95, opacity: 0 }}
@@ -191,11 +225,11 @@ const PurchaseModal = ({
             onClick={makePurchase}
             disabled={!walletAddress || isSubmitting}
             className={`w-full py-3 rounded-md font-bold transition-colors
-    ${
-      walletAddress && !isSubmitting
-        ? "bg-lime-400 hover:bg-lime-500 text-emerald-900"
-        : "bg-gray-300 text-gray-500 cursor-not-allowed"
-    }`}
+              ${
+                walletAddress && !isSubmitting
+                  ? "bg-lime-400 hover:bg-lime-500 text-emerald-900"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              }`}
           >
             {isSubmitting
               ? "Processing..."

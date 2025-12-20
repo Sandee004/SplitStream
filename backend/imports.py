@@ -16,3 +16,4 @@ from typing import List
 import secrets
 import string
 from web3 import Web3
+from dotenv import load_dotenv

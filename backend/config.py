@@ -1,7 +1,10 @@
 # backend/config.py
-
 import os
 import subprocess
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 # ------------------------------
 # Frontend build configuration

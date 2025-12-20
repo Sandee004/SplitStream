@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func, Numeric
 from sqlalchemy.orm import relationship
-from imports import datetime
+from .imports import datetime
 from .database import Base
 
 class User(Base):
@@ -37,19 +37,9 @@ class ProductSplits(Base):
     product_id = Column(Integer, ForeignKey("products.id"))
     product = relationship("Products", back_populates="splits")
 
+
 class Transactions(Base):
     __tablename__ = "transactions"
-
-    id = Column(Integer, primary_key=True, index=True)
-    tx_hash = Column(String, unique=True, nullable=False)
-    amount = Column(Integer, nullable=False) # How much the merchant earned
-    bought_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    product_id = Column(Integer, ForeignKey("products.id"))
-    product = relationship("Products", back_populates="sales")
-
-class Purchase(Base):
-    __tablename__ = "purchases"
 
     id = Column(Integer, primary_key=True)
     merchant_id = Column(Integer, ForeignKey("users.id"))
@@ -58,7 +48,10 @@ class Purchase(Base):
     quantity = Column(Integer, nullable=False)
     amount = Column(Numeric(18, 8), nullable=False)
 
-    status = Column(String, default="pending")  # pending | paid | failed
+    status = Column(String, default="pending")
     tx_hash = Column(String, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    product = relationship("Products", back_populates="sales")
+    merchant = relationship("User")
