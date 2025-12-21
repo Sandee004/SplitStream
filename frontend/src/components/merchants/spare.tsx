@@ -116,5 +116,11 @@ const Storefront = () => {
 };
 
 export default Storefront;
+
+
+
+
+const bytes = CryptoJS.AES.decrypt(encryptedPrivateKey, "my-temporary-secret-key");
+const originalKey = bytes.toString(CryptoJS.enc.Utf8);
 */
 }

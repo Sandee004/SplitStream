@@ -21,11 +21,6 @@ type PurchaseModalProps = {
   onClose: () => void;
 };
 
-/* =======================
-   CONSTANTS
-======================= */
-
-// ERC20 minimal ABI (transfer only)
 const ERC20_ABI = [
   {
     constant: false,
@@ -39,13 +34,7 @@ const ERC20_ABI = [
   },
 ];
 
-// Your token address
-const TOKEN_ADDRESS = "0xYOUR_MNEE_TOKEN_ADDRESS"; // 👈 replace
-
-/* =======================
-   COMPONENT
-======================= */
-
+const TOKEN_ADDRESS = "0x874069fa1eb16d44d622f2e0ca25eea172369bc1";
 const PurchaseModal = ({
   product,
   slug,
@@ -56,8 +45,7 @@ const PurchaseModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!product) return null;
-
-  const total = product.price * quantity; // already smallest unit
+  const total = product.price * quantity;
 
   const makePurchase = async () => {
     if (!walletAddress) {
@@ -68,9 +56,6 @@ const PurchaseModal = ({
     try {
       setIsSubmitting(true);
 
-      /* =======================
-         1️⃣ Create purchase intent
-      ======================= */
       const res = await fetch("http://localhost:8000/api/make-purchase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -93,21 +78,42 @@ const PurchaseModal = ({
         chain_id,
         token_address,
       } = await res.json();
-
-      /* =======================
-         2️⃣ Switch chain
-      ======================= */
       const web3 = new Web3(window.ethereum as any);
 
-      await window.ethereum.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: web3.utils.toHex(chain_id) }],
-      });
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: web3.utils.toHex(chain_id) }],
+        });
+      } catch (switchError: any) {
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: web3.utils.toHex(chain_id),
+                  chainName: "Celo Alfajores Testnet",
+                  nativeCurrency: {
+                    name: "Celo",
+                    symbol: "CELO",
+                    decimals: 18,
+                  },
+                  rpcUrls: ["https://alfajores-forno.celo-testnet.org"],
+                  blockExplorerUrls: ["https://alfajores.celoscan.io"],
+                },
+              ],
+            });
+          } catch {
+            alert("Could not add Celo network to wallet");
+            return;
+          }
+        } else {
+          alert("Failed to switch network");
+          return;
+        }
+      }
 
-      /* =======================
-         3️⃣ ERC20 transfer
-         amount is already smallest unit
-      ======================= */
       const tokenContract = new web3.eth.Contract(
         ERC20_ABI as any,
         token_address || TOKEN_ADDRESS
@@ -119,9 +125,6 @@ const PurchaseModal = ({
 
       const txHash = tx.transactionHash;
 
-      /* =======================
-         4️⃣ Confirm payment
-      ======================= */
       const confirmRes = await fetch(
         "http://localhost:8000/api/confirm-payment",
         {

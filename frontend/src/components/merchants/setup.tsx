@@ -2,6 +2,8 @@
 import React, { useState } from "react";
 import { ArrowRight, User, Wallet, Mail, Lock } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { ethers } from "ethers";
+import CryptoJS from "crypto-js";
 
 export default function SetupPage() {
   const navigate = useNavigate();
@@ -20,8 +22,27 @@ export default function SetupPage() {
   }>({});
 
   const generateWallet = () => {
-    const rand = "0x" + Math.random().toString(16).substring(2, 12);
-    setWalletAddress(rand);
+    const wallet = ethers.Wallet.createRandom();
+    const secretPassphrase = "my-temporary-secret-key";
+
+    const encryptedPrivateKey = CryptoJS.AES.encrypt(
+      wallet.privateKey,
+      secretPassphrase
+    ).toString();
+
+    const encryptedSeedPhrase = CryptoJS.AES.encrypt(
+      wallet.mnemonic?.phrase || "",
+      secretPassphrase
+    ).toString();
+
+    setWalletAddress(wallet.address);
+
+    // 6. Log the results
+    console.log("--- New Wallet Generated ---");
+    console.log("Public Address:", wallet.address);
+    console.log("Encrypted Private Key:", encryptedPrivateKey);
+    console.log("Encrypted Seed Phrase:", encryptedSeedPhrase);
+    console.log("----------------------------");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
