@@ -3,6 +3,7 @@ from .. import models, schemas
 from ..dependencies import get_db, get_current_user
 
 router = APIRouter(prefix="/api", tags=["Client"])
+load_dotenv()
 
 RPC_URL = os.getenv("RPC_URL")
 if not RPC_URL:
@@ -19,9 +20,19 @@ if not CHAIN_ID:
     print("Chain ID hasn't been gotten")
 print(CHAIN_ID)
 
-w3 = Web3(Web3.HTTPProvider(RPC_URL))
-if not w3.is_connected():
-    raise RuntimeError("Web3 provider not connected")
+if not RPC_URL:
+    raise RuntimeError("RPC_URL is missing! Check your .env file.")
+
+request_kwargs = {
+    'timeout': 30,
+    'headers': {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+}
+
+# 2. Pass these headers into HTTPProvider
+w3 = Web3(Web3.HTTPProvider(RPC_URL, request_kwargs=request_kwargs))
+
 
 MNEE_TOKEN = Web3.to_checksum_address(MNEE_TOKEN_ADDRESS)
 CHAIN_ID = int(CHAIN_ID)
@@ -38,7 +49,7 @@ ERC20_ABI = [
         "type": "function",
     }
 ]
-load_dotenv()
+
 
 @router.get("/store/{unique_slug}")
 def get_store_products(

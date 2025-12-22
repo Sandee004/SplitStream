@@ -19,9 +19,10 @@ def seed_demo_user(db: Session):
 
     merchant = models.User(
         username="example",
+     
         email="example@gmail.com",
         password=pwd_cxt.hash("1234"),
-        wallet_address="0xMerchantWallet123",
+        wallet_address="0xB9e367CB4938DC830108aCd66642f2F76fba1393",
         unique_slug="steezed"
     )
     db.add(merchant)
@@ -59,14 +60,19 @@ def seed_demo_user(db: Session):
 
     db.commit()
 
-    # Sales
     sales_list = []
     for _ in range(10):
         sold_item = random.choice(my_inventory)
+        qty = 1 
+        
         sale = models.Transactions(
             tx_hash="0x" + uuid.uuid4().hex,
-            amount=sold_item.price,
-            product_id=sold_item.id
+            amount=sold_item.price * qty,
+            product_id=sold_item.id,
+            
+            merchant_id=merchant.id,
+            quantity=qty,
+            status="paid"
         )
         sales_list.append(sale)
 

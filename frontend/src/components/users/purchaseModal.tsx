@@ -70,6 +70,7 @@ const PurchaseModal = ({
         const errorData = await res.json();
         throw new Error(errorData.detail || "Failed to create purchase");
       }
+      console.log("Flag passed");
 
       const {
         transaction_id,
@@ -124,6 +125,7 @@ const PurchaseModal = ({
         .send({ from: walletAddress });
 
       const txHash = tx.transactionHash;
+      console.log("Flag 2 passed");
 
       const confirmRes = await fetch(
         "http://localhost:8000/api/confirm-payment",

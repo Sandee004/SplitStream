@@ -19,7 +19,7 @@ def dashboard(
 
         my_sales = db.query(models.Transactions).filter(
             models.Transactions.product_id.in_(product_ids)
-        ).order_by(models.Transactions.bought_at.desc()).all()
+        ).order_by(models.Transactions.created_at.desc()).all()
 
         total_earnings = sum(sale.amount for sale in my_sales)
         total_sales_count = len(my_sales)
@@ -30,7 +30,7 @@ def dashboard(
                 "tx_hash": sale.tx_hash,
                 "item_sold": sale.product.product_name,
                 "earned": sale.amount,
-                "date": sale.bought_at.strftime("%Y-%m-%d")
+                "date": sale.created_at.strftime("%Y-%m-%d")
             })
 
         inventory_list = []

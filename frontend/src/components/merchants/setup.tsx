@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from "react";
-import { ArrowRight, User, Wallet, Mail, Lock } from "lucide-react";
+import { ArrowRight, User, Wallet, Check, X, Mail, Lock } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { ethers } from "ethers";
-import CryptoJS from "crypto-js";
+//import CryptoJS from "crypto-js";
 
 export default function SetupPage() {
   const navigate = useNavigate();
@@ -13,6 +13,7 @@ export default function SetupPage() {
   const [password, setPassword] = useState("");
   const [autoWallet, setAutoWallet] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isWalletValid, setIsWalletValid] = useState<boolean | null>(null);
 
   const [errors, setErrors] = useState<{
     username?: string;
@@ -21,28 +22,71 @@ export default function SetupPage() {
     password?: string;
   }>({});
 
-  const generateWallet = () => {
+  const validateAddress = (address: string) => {
+    if (!address) {
+      setIsWalletValid(null);
+      return false;
+    }
+
+    const isValid = ethers.isAddress(address);
+    setIsWalletValid(isValid);
+    return isValid;
+  };
+
+  async function generateWallet(password: string) {
     const wallet = ethers.Wallet.createRandom();
-    const secretPassphrase = "my-temporary-secret-key";
+    const salt = crypto.getRandomValues(new Uint8Array(16)); //used to protect password
+    const iv = crypto.getRandomValues(new Uint8Array(12)); // used to protect encryption
 
-    const encryptedPrivateKey = CryptoJS.AES.encrypt(
-      wallet.privateKey,
-      secretPassphrase
-    ).toString();
+    const encoder = new TextEncoder(); //convert password from string to raw byte(Unit8Array)
 
-    const encryptedSeedPhrase = CryptoJS.AES.encrypt(
-      wallet.mnemonic?.phrase || "",
-      secretPassphrase
-    ).toString();
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(password),
+      "PBKDF2",
+      false,
+      ["deriveKey"]
+    );
 
-    setWalletAddress(wallet.address);
+    const aesKey = await crypto.subtle.deriveKey(
+      {
+        name: "PBKDF2",
+        salt,
+        iterations: 310000,
+        hash: "SHA-256",
+      },
+      keyMaterial,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"]
+    );
 
-    // 6. Log the results
-    console.log("--- New Wallet Generated ---");
-    console.log("Public Address:", wallet.address);
-    console.log("Encrypted Private Key:", encryptedPrivateKey);
-    console.log("Encrypted Seed Phrase:", encryptedSeedPhrase);
-    console.log("----------------------------");
+    const encryptedPrivateKeyBuffer = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      aesKey,
+      encoder.encode(wallet.privateKey)
+    );
+
+    const encryptedPrivateKey = btoa(
+      String.fromCharCode(...new Uint8Array(encryptedPrivateKeyBuffer))
+    );
+
+    return {
+      address: wallet.address,
+      encryptedPrivateKey,
+      salt: btoa(String.fromCharCode(...salt)),
+      iv: btoa(String.fromCharCode(...iv)),
+      mnemonic: wallet.mnemonic?.phrase,
+    };
+  }
+
+  const handleGenerateWallet = async () => {
+    const walletData = await generateWallet(password);
+
+    setWalletAddress(walletData.address);
+    console.log(walletData);
+
+    alert("SAVE THIS SEED PHRASE NOW:\n\n" + walletData.mnemonic);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,8 +101,11 @@ export default function SetupPage() {
     if (!email.trim()) newErrors.email = "Required";
     if (!password.trim()) newErrors.password = "Required";
 
-    if (!walletAddress.trim()) newErrors.walletAddress = "Required";
-    else if (walletAddress.length < 10) newErrors.walletAddress = "Invalid";
+    if (!walletAddress.trim()) {
+      newErrors.walletAddress = "Required";
+    } else if (!ethers.isAddress(walletAddress)) {
+      newErrors.walletAddress = "Invalid Ethereum Address";
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -218,25 +265,53 @@ export default function SetupPage() {
                 <Wallet className="w-4 h-4" /> Default Payout Wallet
               </label>
 
-              <input
-                type="text"
-                value={walletAddress}
-                onChange={(e) => {
-                  setWalletAddress(e.target.value);
-                  setErrors((p) => ({ ...p, wallet: undefined }));
-                }}
-                placeholder="0x..."
-                disabled={autoWallet}
-                className={`
-                  w-full px-4 py-3 bg-gray-100 text-emerald-800 font-mono text-sm
-                  border-2 transition-colors disabled:opacity-60 
-                  ${
-                    errors.walletAddress
-                      ? "border-red-600"
-                      : "border-emerald-800/30"
-                  }
-                `}
-              />
+              {/* 6. Added 'relative' wrapper for icon positioning */}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={walletAddress}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setWalletAddress(val);
+                    validateAddress(val); // Trigger real-time validation
+                    setErrors((p) => ({ ...p, walletAddress: undefined }));
+                  }}
+                  placeholder="0x..."
+                  disabled={autoWallet}
+                  // Added 'pr-10' to prevent text overlapping the icon
+                  className={`
+                    w-full px-4 py-3 pr-10 bg-gray-100 text-emerald-800 font-mono text-sm
+                    border-2 transition-colors disabled:opacity-60 
+                    ${
+                      // Logic: Red border if error OR explicitly invalid state
+                      errors.walletAddress || isWalletValid === false
+                        ? "border-red-600 focus:border-red-600"
+                        : isWalletValid === true
+                        ? "border-emerald-600 focus:border-emerald-600"
+                        : "border-emerald-800/30"
+                    }
+                  `}
+                />
+
+                {/* 7. The Validation Icons */}
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-300">
+                  {/* Show Green Check if valid */}
+                  {walletAddress && isWalletValid === true && (
+                    <Check
+                      className="w-5 h-5 text-emerald-600 opacity-60"
+                      strokeWidth={3}
+                    />
+                  )}
+
+                  {/* Show Red X if invalid */}
+                  {walletAddress && isWalletValid === false && (
+                    <X
+                      className="w-5 h-5 text-red-500 opacity-60"
+                      strokeWidth={3}
+                    />
+                  )}
+                </div>
+              </div>
 
               {errors.walletAddress && (
                 <p className="text-xs mt-1 font-mono text-red-600">
@@ -250,7 +325,11 @@ export default function SetupPage() {
                   checked={autoWallet}
                   onChange={(e) => {
                     setAutoWallet(e.target.checked);
-                    if (e.target.checked) generateWallet();
+                    if (e.target.checked) handleGenerateWallet();
+                    else {
+                      setWalletAddress("");
+                      setIsWalletValid(null);
+                    }
                   }}
                 />
                 <span className="text-xs font-mono text-emerald-800/60">

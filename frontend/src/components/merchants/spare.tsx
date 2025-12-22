@@ -122,5 +122,12 @@ export default Storefront;
 
 const bytes = CryptoJS.AES.decrypt(encryptedPrivateKey, "my-temporary-secret-key");
 const originalKey = bytes.toString(CryptoJS.enc.Utf8);
+
+
+#RPC_URL=https://rpc.sepolia.org
+#MNEE_TOKEN_ADDRESS=0x8ccedbAe4916b79da7F3F612EfB2EB93A2bFD6cF
+#CHAIN_ID=1
+
+
 */
 }
