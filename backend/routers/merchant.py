@@ -1,7 +1,7 @@
 from ..imports import APIRouter, HTTPException, Session, Depends, Security, SQLAlchemyError, status
 from .. import models
 from ..dependencies import get_db, get_current_user
-#from ..config import FRONTEND_BASE_URL
+
 
 router = APIRouter(prefix="/api", tags=["Merchant"])
 
@@ -25,7 +25,7 @@ def dashboard(
         total_sales_count = len(my_sales)
 
         sales_history = []
-        for sale in my_sales:
+        for sale in my_sales[:8]:
             sales_history.append({
                 "tx_hash": sale.tx_hash,
                 "item_sold": sale.product.product_name,

@@ -1,6 +1,6 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Security, APIRouter
+from fastapi import FastAPI, Depends, HTTPException, status, Security, APIRouter, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from passlib.context import CryptContext
 import os
 from jose import jwt, JWTError, ExpiredSignatureError

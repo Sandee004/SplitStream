@@ -1,13 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import {
-  Plus,
-  Zap,
-  TrendingUp,
-  Package,
-  Loader2,
-} from "lucide-react";
+import { Plus, Zap, TrendingUp, Package, Loader2 } from "lucide-react";
 import TransactionTable from "./transaction-table";
 import ProductCard from "./product-card";
 import ProductModal from "./product-modal";
@@ -46,7 +40,6 @@ export default function DashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [merchantWallet, setMerchantWallet] = useState<string>("");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  
 
   const loadDashboardData = useCallback(async () => {
     try {
@@ -75,34 +68,42 @@ export default function DashboardPage() {
       }
 
       const data = await res.json();
+
+      // SAFEGUARD: Ensure data exists before mapping
+      if (!data) return;
+
       setProducts(
-        data.inventory.map((item: any) => ({
-          id: item.id.toString(),
-          product_name: item.name,
-          price: item.price,
+        (data.inventory || []).map((item: any) => ({
+          id: item.id?.toString() || "",
+          product_name: item.name || "Unknown Product",
+          price: item.price || 0,
+          // Add default description to prevent ProductCard crashes
+          description: item.description || "",
           splits: item.splits
             ? item.splits.map((s: any) => ({
                 id: s.id?.toString() || crypto.randomUUID(),
-                wallet_address: s.wallet_address,
-                percentage: s.percentage,
-                isOwner: s.is_owner || false,
+                wallet_address: s.wallet_address || "",
+                percentage: s.percentage || 0,
+                isOwner: s.isOwner || false,
               }))
             : [],
         }))
       );
 
       setTransactions(
-        data.recent_sales.map((sale: any) => ({
-          id: sale.tx_hash,
-          txHash: sale.tx_hash,
-          productName: sale.item_sold,
-          amount: sale.earned,
-          timestamp: new Date(sale.date),
+        (data.recent_sales || []).map((sale: any) => ({
+          id: sale.tx_hash || crypto.randomUUID(),
+          // CRITICAL FIX: Ensure txHash is a string.
+          // If null, TransactionTable crashes when slicing.
+          txHash: sale.tx_hash || "",
+          productName: sale.item_sold || "Unknown",
+          amount: sale.earned || 0,
+          timestamp: sale.date ? new Date(sale.date) : new Date(),
         }))
       );
 
-      setTotalRevenue(data.stats.total_revenue);
-      setMerchantWallet(data.merchant_profile.wallet);
+      setTotalRevenue(data.stats?.total_revenue || 0);
+      setMerchantWallet(data.merchant_profile?.wallet || "");
     } catch (err) {
       console.error("Dashboard Fetch Error:", err);
     } finally {
@@ -133,7 +134,7 @@ export default function DashboardPage() {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-      loadDashboardData(); // Refresh list after delete
+      loadDashboardData();
     } catch (error) {
       console.error("Failed to delete", error);
     }
@@ -234,7 +235,7 @@ export default function DashboardPage() {
           <button
             onClick={() => setIsModalOpen(true)}
             className="w-full border-2 border-dashed border-accent/50 bg-accent/5 
-                        hover:bg-accent/10 hover:border-accent transition-all p-8 md:p-12 group"
+                           hover:bg-accent/10 hover:border-accent transition-all p-8 md:p-12 group"
           >
             <div className="flex flex-col items-center gap-4">
               <div className="w-16 h-16 border-2 border-accent bg-accent/10 flex items-center justify-center group-hover:glow-accent transition-all">
@@ -291,7 +292,7 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <TransactionTable transactions={transactions.slice(0, 8)} />
+          <TransactionTable transactions={transactions} />
         </motion.div>
       </div>
 

@@ -8,17 +8,16 @@ load_dotenv()
 RPC_URL = os.getenv("RPC_URL")
 if not RPC_URL:
     print("RPC is invalid")
-print (RPC_URL)
 
 MNEE_TOKEN_ADDRESS = os.getenv("MNEE_TOKEN_ADDRESS")
 if not MNEE_TOKEN_ADDRESS:
     print("MNEE Token not gotten")
-print(MNEE_TOKEN_ADDRESS)
+
 
 CHAIN_ID = os.getenv("CHAIN_ID")
 if not CHAIN_ID:
     print("Chain ID hasn't been gotten")
-print(CHAIN_ID)
+
 
 if not RPC_URL:
     raise RuntimeError("RPC_URL is missing! Check your .env file.")

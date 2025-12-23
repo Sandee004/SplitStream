@@ -26,7 +26,24 @@ export default function App() {
         </Route>
 
         <Route path="/store/:slug" element={<Storefront />} />
+
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Router>
+  );
+}
+
+function NotFoundPage() {
+  return (
+    <div className="h-screen flex flex-col items-center justify-center bg-[#f5f5f5] text-[#1a3a2a]">
+      <h1 className="text-6xl font-bold">404</h1>
+      <p className="text-xl mt-4">Page not found</p>
+      <a
+        href="/dashboard"
+        className="mt-6 px-4 py-2 bg-[#1a3a2a] text-[#a8e6cf] rounded"
+      >
+        Go Back Home
+      </a>
+    </div>
   );
 }

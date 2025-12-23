@@ -1,4 +1,4 @@
-from .imports import FastAPI, CORSMiddleware, os, StaticFiles, FileResponse, OAuth2PasswordBearer, load_dotenv, HTTPBearer
+from .imports import FastAPI, CORSMiddleware, os, StaticFiles, FileResponse, OAuth2PasswordBearer, load_dotenv, HTTPBearer, JSONResponse, Request
 from . import models
 from .routers import auth, store, transactions, products, merchant
 from .database import engine
@@ -35,6 +35,19 @@ app.include_router(products.router)
 app.include_router(store.router)
 app.include_router(transactions.router)
 
+
+@app.exception_handler(404)
+async def custom_404_handler(request: Request, exc):
+    return JSONResponse(
+        status_code=404,
+        content={
+            "status": "error",
+            "code": 404,
+            "message": "Endpoint not found",
+            "detail": f"The path '{request.url.path}' does not exist on this server.",
+            "suggestion": "Check your URL spelling or request method (GET vs POST)."
+        }
+    )
 
 
 # ------------------------------

@@ -11,6 +11,8 @@ function formatTimeAgo(date: Date): string {
 }
 
 function truncateHash(hash: string): string {
+  if (!hash) return "Pending...";
+  if (hash.length < 10) return hash;
   return `${hash.slice(0, 10)}...${hash.slice(-8)}`;
 }
 
@@ -30,7 +32,9 @@ export default function TransactionTable({
   const navigate = useNavigate();
 
   const goToTx = (hash: string) => {
-    navigate(`/tx/${hash}`);
+    if (hash && hash !== "Pending...") {
+      navigate(`/tx/${hash}`);
+    }
   };
 
   return (
@@ -78,13 +82,15 @@ export default function TransactionTable({
                       {truncateHash(tx.txHash)}
                     </span>
 
-                    <ExternalLink
-                      className="w-3 h-3 text-[#065f46]/30 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        goToTx(tx.txHash);
-                      }}
-                    />
+                    {tx.txHash && (
+                      <ExternalLink
+                        className="w-3 h-3 text-[#065f46]/30 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          goToTx(tx.txHash);
+                        }}
+                      />
+                    )}
                   </div>
                 </td>
 

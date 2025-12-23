@@ -4,14 +4,11 @@ import { X } from "lucide-react";
 import { useState } from "react";
 import Web3 from "web3";
 
-/* =======================
-   TYPES
-======================= */
 
 type Product = {
   id: number;
   product_name: string;
-  price: number; // smallest token unit
+  price: number;
 };
 
 type PurchaseModalProps = {

@@ -4,8 +4,7 @@ from ..dependencies import get_db, get_current_user
 
 router = APIRouter(prefix="/api", tags=["Merchant - Products"])
 
-
-@router.get("/api/products", tags=["Merchant - Products"], response_model=list[schemas.ProductResponse])
+@router.get("/products", tags=["Merchant - Products"], response_model=list[schemas.ProductResponse])
 def get_products(
     db: Session = Depends(get_db),
     current_user: models.User = Security(get_current_user),
@@ -20,7 +19,7 @@ def get_products(
     return products
 
 
-@router.post("/api/add-product", tags=["Merchant - Products"], response_model=schemas.ProductResponse)
+@router.post("/add-product", tags=["Merchant - Products"], response_model=schemas.ProductResponse)
 def add_product(request: schemas.AddProduct,
     db: Session = Depends(get_db),
     current_user: models.User = Security(get_current_user)):
@@ -58,7 +57,7 @@ def add_product(request: schemas.AddProduct,
         raise HTTPException(500, "Failed to create product")
 
 
-@router.put("/api/update-product/{product_id}", tags=["Merchant - Products"], response_model=schemas.ProductResponse)
+@router.put("/update-product/{product_id}", tags=["Merchant - Products"], response_model=schemas.ProductResponse)
 def update_product(
     product_id: int,
     request: schemas.AddProduct,
@@ -111,7 +110,7 @@ def update_product(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/api/delete-product/{product_id}", tags=["Merchant - Products"])
+@router.delete("/delete-product/{product_id}", tags=["Merchant - Products"])
 def delete_product(
     product_id: int,
     db: Session = Depends(get_db),

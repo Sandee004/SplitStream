@@ -4,10 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ProductModal from "./product-modal";
 
-// 1. Interfaces
 interface Split {
   id: string;
-  wallet_address: string; // FIX: Renamed from 'wallet' to match ProductModal
+  wallet_address: string;
   percentage: number;
   isOwner?: boolean;
 }
@@ -25,7 +24,6 @@ export default function ActiveStreams() {
   const [streams, setStreams] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [merchantWallet, setMerchantWallet] = useState("");

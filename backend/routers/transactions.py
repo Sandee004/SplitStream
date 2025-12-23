@@ -22,7 +22,7 @@ def get_transaction_history(
             id=tx.id,
             tx_hash=tx.tx_hash,
             amount=tx.amount,
-            bought_at=tx.bought_at,
+            bought_at=tx.created_at,
             product_name=tx.product.product_name,
         )
         for tx in transactions

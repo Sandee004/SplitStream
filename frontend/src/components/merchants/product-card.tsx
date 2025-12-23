@@ -74,7 +74,7 @@ const ProductCard = ({
               style={{
                 width: `${split.percentage}%`,
                 backgroundColor: split.isOwner
-                  ? "hsl(var(--accent))"
+                  ? "#a8e6cf"
                   : `hsl(160, ${60 - i * 15}%, ${35 + i * 10}%)`,
               }}
             />
