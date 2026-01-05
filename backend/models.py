@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func, Numeric
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func, Numeric, Float
 from sqlalchemy.orm import relationship
 from .imports import datetime
 from .database import Base
@@ -55,3 +55,13 @@ class Transactions(Base):
 
     product = relationship("Products", back_populates="sales")
     merchant = relationship("User")
+
+
+class PendingPayout(Base):
+    __tablename__ = "pending_payouts"
+    id = Column(Integer, primary_key=True, index=True)
+    merchant_id = Column(Integer, ForeignKey("users.id"))
+    recipient_wallet = Column(String)
+    amount = Column(Float)
+    status = Column(String, default="pending") # pending, paid
+    transaction_source_id = Column(Integer, ForeignKey("transactions.id"))

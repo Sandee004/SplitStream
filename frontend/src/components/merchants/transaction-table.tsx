@@ -1,7 +1,7 @@
-import { useNavigate } from "react-router-dom";
-import { Clock, ExternalLink } from "lucide-react";
+import { Clock, CheckCircle } from "lucide-react";
 
-function formatTimeAgo(date: Date): string {
+function formatTimeAgo(dateInput: string | Date): string {
+  const date = new Date(dateInput);
   const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
 
   if (seconds < 60) return `${seconds}s ago`;
@@ -17,11 +17,12 @@ function truncateHash(hash: string): string {
 }
 
 interface Transaction {
-  id: string;
+  id: number;
   txHash: string;
   productName: string;
   amount: number;
-  timestamp: Date;
+  status?: string;
+  bought_at: string;
 }
 
 export default function TransactionTable({
@@ -29,14 +30,6 @@ export default function TransactionTable({
 }: {
   transactions: Transaction[];
 }) {
-  const navigate = useNavigate();
-
-  const goToTx = (hash: string) => {
-    if (hash && hash !== "Pending...") {
-      navigate(`/tx/${hash}`);
-    }
-  };
-
   return (
     <div className="bg-white border-2 border-[#065f46]/20">
       {/* Header */}
@@ -62,7 +55,10 @@ export default function TransactionTable({
                 Product
               </th>
               <th className="px-6 py-3 text-right text-xs font-mono uppercase tracking-wider text-[#065f46]/50">
-                Amount Split
+                Amount
+              </th>
+              <th className="px-6 py-3 text-center text-xs font-mono uppercase tracking-wider text-[#065f46]/50">
+                Status
               </th>
               <th className="px-6 py-3 text-right text-xs font-mono uppercase tracking-wider text-[#065f46]/50">
                 Time
@@ -76,40 +72,44 @@ export default function TransactionTable({
                 key={tx.id}
                 className="hover:bg-[#a3e635]/5 transition-colors group"
               >
+                {/* 1. TX Hash */}
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm text-[#065f46]">
                       {truncateHash(tx.txHash)}
                     </span>
-
-                    {tx.txHash && (
-                      <ExternalLink
-                        className="w-3 h-3 text-[#065f46]/30 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          goToTx(tx.txHash);
-                        }}
-                      />
-                    )}
                   </div>
                 </td>
 
+                {/* 2. Product Name */}
                 <td className="px-6 py-4">
-                  <span className="text-sm text-[#065f46]">
+                  <span className="text-sm font-medium text-[#065f46]">
                     {tx.productName}
                   </span>
                 </td>
 
+                {/* 3. Amount */}
                 <td className="px-6 py-4 text-right">
-                  <span className="font-mono text-sm text-[#065f46] tabular-nums">
+                  <span className="font-mono text-sm text-[#065f46] tabular-nums font-bold">
                     {tx.amount.toFixed(2)}{" "}
-                    <span className="text-[#065f46]/50">MNEE</span>
+                    <span className="text-[#065f46]/50 text-xs">MNEE</span>
                   </span>
                 </td>
 
+                {/* 4. Status Badge */}
+                <td className="px-6 py-4 text-center">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    <CheckCircle className="w-3 h-3" />
+                    <span className="text-[10px] uppercase font-bold tracking-wide">
+                      {tx.status}
+                    </span>
+                  </div>
+                </td>
+
+                {/* 5. Time (Restored!) */}
                 <td className="px-6 py-4 text-right">
                   <span className="font-mono text-xs text-[#065f46]/50">
-                    {formatTimeAgo(tx.timestamp)}
+                    {formatTimeAgo(tx.bought_at)}
                   </span>
                 </td>
               </tr>

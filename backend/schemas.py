@@ -61,6 +61,7 @@ class TransactionOut(BaseModel):
     amount: int
     bought_at: datetime
     product_name: str
+    status: str
 
     class Config:
         from_attributes = True
@@ -72,4 +73,7 @@ class PurchaseRequest(BaseModel):
 
 class ConfirmPaymentRequest(BaseModel):
     purchase_id: int
+    tx_hash: str
+
+class MarkPaidRequest(BaseModel):
     tx_hash: str

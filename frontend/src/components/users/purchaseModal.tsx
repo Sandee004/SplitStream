@@ -1,22 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
 import { useState } from "react";
 import Web3 from "web3";
 
-
-type Product = {
-  id: number;
-  product_name: string;
-  price: number;
-};
-
-type PurchaseModalProps = {
-  product: Product | null;
-  slug: string;
-  walletAddress: string | null;
-  onClose: () => void;
-};
+// 1. Ethereum Mainnet Configuration
+const CHAIN_ID = 1; // Mainnet
+const MNEE_TOKEN_ADDRESS = "0x8ccedbae4916b79da7f3f612efb2eb93a2bfd6cf"; // Real MNEE Contract
 
 const ERC20_ABI = [
   {
@@ -31,7 +22,19 @@ const ERC20_ABI = [
   },
 ];
 
-const TOKEN_ADDRESS = "0x874069fa1eb16d44d622f2e0ca25eea172369bc1";
+type Product = {
+  id: number;
+  product_name: string;
+  price: number;
+};
+
+type PurchaseModalProps = {
+  product: Product | null;
+  slug: string;
+  onClose: () => void;
+  walletAddress: string | null; // User's connected wallet
+};
+
 const PurchaseModal = ({
   product,
   slug,
@@ -42,17 +45,33 @@ const PurchaseModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!product) return null;
-  const total = product.price * quantity;
+  const totalAmount = product.price * quantity;
 
   const makePurchase = async () => {
     if (!walletAddress) {
-      alert("Please connect wallet to make a transaction");
+      alert("Please connect your wallet first.");
       return;
     }
 
     try {
       setIsSubmitting(true);
 
+      if (!window.ethereum) throw new Error("Metamask not found");
+      const web3 = new Web3(window.ethereum);
+
+      // 2. Switch to Ethereum Mainnet
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: web3.utils.toHex(CHAIN_ID) }],
+        });
+      } catch {
+        alert("Please switch your wallet to Ethereum Mainnet");
+        return;
+      }
+
+      // 3. Initiate Transaction in Backend (To get correct Merchant Address)
+      // We don't want to trust the frontend with the merchant address
       const res = await fetch("http://localhost:8000/api/make-purchase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -63,66 +82,22 @@ const PurchaseModal = ({
         }),
       });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.detail || "Failed to create purchase");
-      }
-      console.log("Flag passed");
+      if (!res.ok) throw new Error("Could not initiate purchase");
 
-      const {
-        transaction_id,
-        amount,
-        merchant_wallet,
-        chain_id,
-        token_address,
-      } = await res.json();
-      const web3 = new Web3(window.ethereum as any);
+      const { transaction_id, merchant_wallet } = await res.json();
 
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: web3.utils.toHex(chain_id) }],
-        });
-      } catch (switchError: any) {
-        if (switchError.code === 4902) {
-          try {
-            await window.ethereum.request({
-              method: "wallet_addEthereumChain",
-              params: [
-                {
-                  chainId: web3.utils.toHex(chain_id),
-                  chainName: "Celo Alfajores Testnet",
-                  nativeCurrency: {
-                    name: "Celo",
-                    symbol: "CELO",
-                    decimals: 18,
-                  },
-                  rpcUrls: ["https://alfajores-forno.celo-testnet.org"],
-                  blockExplorerUrls: ["https://alfajores.celoscan.io"],
-                },
-              ],
-            });
-          } catch {
-            alert("Could not add Celo network to wallet");
-            return;
-          }
-        } else {
-          alert("Failed to switch network");
-          return;
-        }
-      }
-
-      const tokenContract = new web3.eth.Contract(
+      const contract = new web3.eth.Contract(
         ERC20_ABI as any,
-        token_address || TOKEN_ADDRESS
+        MNEE_TOKEN_ADDRESS
       );
+      const amountInWei = web3.utils.toWei(totalAmount.toString(), "ether");
+      console.log(`Paying ${totalAmount} MNEE to ${merchant_wallet}`);
 
-      const tx = await tokenContract.methods
-        .transfer(merchant_wallet, amount)
+      const tx = await contract.methods
+        .transfer(merchant_wallet, amountInWei)
         .send({ from: walletAddress });
 
       const txHash = tx.transactionHash;
-      console.log("Flag 2 passed");
 
       const confirmRes = await fetch(
         "http://localhost:8000/api/confirm-payment",
@@ -136,15 +111,19 @@ const PurchaseModal = ({
         }
       );
 
-      if (!confirmRes.ok) {
-        throw new Error("Payment verification failed");
+      if (confirmRes.ok) {
+        alert("Payment Successful!");
+        onClose();
+      } else {
+        alert("Payment sent, but verification failed. Contact support.");
       }
-
-      alert("Payment successful!");
-      onClose();
-    } catch (err) {
-      console.error("Payment error:", err);
-      alert("Payment failed. Please try again.");
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 4001) {
+        alert("Transaction rejected by user.");
+      } else {
+        alert("Transaction failed. Check console.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -153,7 +132,7 @@ const PurchaseModal = ({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -161,84 +140,72 @@ const PurchaseModal = ({
       >
         <motion.div
           onClick={(e) => e.stopPropagation()}
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.95, opacity: 0 }}
-          transition={{ type: "tween", duration: 0.15, ease: "easeOut" }}
-          className="relative w-full max-w-md border-2 border-emerald-800 bg-white p-6"
+          className="relative w-full max-w-md bg-white p-6 border-2 border-[#1a3a2a] shadow-2xl"
         >
-          {/* Close */}
+          {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 text-emerald-700 hover:text-emerald-900"
+            className="absolute top-3 right-3 text-gray-400 hover:text-black"
           >
             <X />
           </button>
 
-          <h3 className="text-xl font-bold mb-4">Purchase Summary</h3>
+          <h3 className="text-xl font-bold mb-4 text-[#1a3a2a]">
+            Confirm Purchase
+          </h3>
 
-          {/* Product Info */}
-          <div className="mb-4 space-y-2">
-            <div className="flex justify-between">
-              <span className="font-mono text-sm text-emerald-700/60">
-                Product
-              </span>
-              <span className="font-semibold">{product.product_name}</span>
+          {/* Receipt Card */}
+          <div className="bg-[#f5f5f5] p-4 mb-4 rounded border border-gray-200">
+            <div className="flex justify-between mb-2">
+              <span className="text-gray-600">Product</span>
+              <span className="font-bold">{product.product_name}</span>
             </div>
-
-            <div className="flex justify-between">
-              <span className="font-mono text-sm text-emerald-700/60">
-                Price
+            <div className="flex justify-between items-baseline">
+              <span className="text-gray-600">Total</span>
+              <span className="text-2xl font-bold text-[#1a3a2a]">
+                {totalAmount} MNEE
               </span>
-              <span className="font-semibold">{product.price} MNEE</span>
             </div>
           </div>
 
-          {/* Quantity */}
-          <div className="mb-6">
-            <label className="block text-sm font-mono text-emerald-700/60 mb-2">
-              Quantity
-            </label>
-            <div className="flex items-center gap-3">
+          {/* Actions */}
+          <div className="flex gap-3">
+            {/* Quantity Stepper */}
+            <div className="flex items-center border border-gray-300 rounded">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-10 h-10 border-2 border-emerald-800 font-bold"
+                className="px-3 py-2 hover:bg-gray-100"
               >
-                −
+                -
               </button>
-              <span className="w-12 text-center font-bold">{quantity}</span>
+              <span className="px-3 font-mono">{quantity}</span>
               <button
                 onClick={() => setQuantity((q) => q + 1)}
-                className="w-10 h-10 border-2 border-emerald-800 font-bold"
+                className="px-3 py-2 hover:bg-gray-100"
               >
                 +
               </button>
             </div>
+
+            {/* Pay Button */}
+            <button
+              onClick={makePurchase}
+              disabled={isSubmitting || !walletAddress}
+              className="flex-1 bg-[#1a3a2a] text-[#a8e6cf] font-bold py-3 rounded hover:bg-[#1a3a2a]/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                "Pay with Metamask"
+              )}
+            </button>
           </div>
 
-          {/* Total */}
-          <div className="flex justify-between mb-6 border-t pt-4">
-            <span className="font-mono text-sm text-emerald-700/60">Total</span>
-            <span className="text-lg font-bold">{total} MNEE</span>
-          </div>
-
-          {/* CTA */}
-          <button
-            onClick={makePurchase}
-            disabled={!walletAddress || isSubmitting}
-            className={`w-full py-3 rounded-md font-bold transition-colors
-              ${
-                walletAddress && !isSubmitting
-                  ? "bg-lime-400 hover:bg-lime-500 text-emerald-900"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
-              }`}
-          >
-            {isSubmitting
-              ? "Processing..."
-              : walletAddress
-              ? "Confirm Purchase"
-              : "Connect wallet to continue"}
-          </button>
+          {!walletAddress && (
+            <p className="text-xs text-red-500 mt-2 text-center">
+              Please connect wallet first
+            </p>
+          )}
         </motion.div>
       </motion.div>
     </AnimatePresence>

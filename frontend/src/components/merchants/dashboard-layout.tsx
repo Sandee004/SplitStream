@@ -10,7 +10,8 @@ import {
   Check,
   Copy,
   Store, // Added
-  ExternalLink, // Added
+  ExternalLink,
+  DollarSign, // Added
 } from "lucide-react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 
@@ -85,6 +86,7 @@ export default function DashboardLayout() {
   const navItems = [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Streams", path: "/dashboard/streams", icon: GitBranch },
+    { label: "Payouts", path: "/dashboard/payouts", icon: DollarSign },
     { label: "History", path: "/dashboard/history", icon: History },
     { label: "Settings", path: "/dashboard/settings", icon: Settings },
   ];

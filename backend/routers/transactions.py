@@ -13,7 +13,11 @@ def get_transaction_history(
         db.query(models.Transactions)
         .join(models.Products)
         .options(joinedload(models.Transactions.product))
-        .filter(models.Products.merchant_id == current_user.id)
+        .filter(
+            models.Products.merchant_id == current_user.id,
+            models.Transactions.status == "paid"  # <--- UPDATE 1: Only show successful sales
+        )
+        .order_by(models.Transactions.created_at.desc()) # <--- UPDATE 2: Newest first
         .all()
     )
 
@@ -24,6 +28,7 @@ def get_transaction_history(
             amount=tx.amount,
             bought_at=tx.created_at,
             product_name=tx.product.product_name,
+            status=tx.status
         )
         for tx in transactions
     ]

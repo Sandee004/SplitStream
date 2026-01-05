@@ -19,20 +19,7 @@ if not CHAIN_ID:
     print("Chain ID hasn't been gotten")
 
 
-if not RPC_URL:
-    raise RuntimeError("RPC_URL is missing! Check your .env file.")
-
-request_kwargs = {
-    'timeout': 30,
-    'headers': {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
-}
-
-# 2. Pass these headers into HTTPProvider
-w3 = Web3(Web3.HTTPProvider(RPC_URL, request_kwargs=request_kwargs))
-
-
+w3 = Web3(Web3.HTTPProvider(RPC_URL))
 MNEE_TOKEN = Web3.to_checksum_address(MNEE_TOKEN_ADDRESS)
 CHAIN_ID = int(CHAIN_ID)
 
@@ -113,7 +100,6 @@ def make_purchase(
 def confirm_payment(
     request: schemas.ConfirmPaymentRequest,
     db: Session = Depends(get_db),
-    user=Depends(get_current_user),
 ):
     transaction = db.query(models.Transactions).filter(
         models.Transactions.id == request.transaction_id,
@@ -145,23 +131,81 @@ def confirm_payment(
         raise HTTPException(400, "Not a transfer() call")
 
     to_address = params["_to"]
-    value = params["_value"]
-
     merchant = db.query(models.User).get(transaction.merchant_id)
-    expected_amount = transaction.amount
-    #expected_amount = int(w3.to_wei(transaction.amount, "ether"))
-
+    
     if to_address.lower() != merchant.wallet_address.lower():
         raise HTTPException(400, "Wrong recipient")
 
-    if value != expected_amount:
-        raise HTTPException(400, "Wrong token amount")
+    on_chain_value = params["_value"]
+    
+    expected_amount_wei = w3.to_wei(str(transaction.amount), "ether")
 
-    if receipt["status"] != 1:
-        raise HTTPException(400, "Transaction failed on-chain")
+    if on_chain_value != expected_amount_wei:
+        raise HTTPException(
+            400, 
+            f"Wrong amount. Expected {expected_amount_wei}, got {on_chain_value}"
+        )
+
+    product = db.query(models.Products).get(transaction.product_id)
+    
+    for split in product.splits:
+        if split.wallet_address.lower() == merchant.wallet_address.lower():
+            continue
+
+        partner_share = transaction.amount * (split.percentage / 100)
+
+        payout = models.PendingPayout(
+            merchant_id=merchant.id,
+            recipient_wallet=split.wallet_address,
+            amount=partner_share,
+            status="unpaid",
+            transaction_source_id=transaction.id
+        )
+        db.add(payout)
 
     transaction.status = "paid"
     transaction.tx_hash = tx_hash
     db.commit()
 
     return {"status": "paid"}
+
+
+
+@router.get("/api/payouts")
+def get_payouts(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    payouts = db.query(models.PendingPayout).filter(
+        models.PendingPayout.merchant_id == current_user.id,
+        models.PendingPayout.status == "unpaid"
+    ).all()
+    
+    result = []
+    for p in payouts:
+        result.append({
+            "id": p.id,
+            "recipient_wallet": p.recipient_wallet,
+            "amount": p.amount,
+            "status": p.status,
+        })
+    return result
+
+# 2. MARK AS PAID
+
+
+@router.post("/api/payouts/{payout_id}/mark-paid")
+def mark_payout_paid(
+    payout_id: int, 
+    request: schemas.MarkPaidRequest,
+    db: Session = Depends(get_db), 
+    current_user = Depends(get_current_user)
+):
+    payout = db.query(models.PendingPayout).filter(
+        models.PendingPayout.id == payout_id,
+        models.PendingPayout.merchant_id == current_user.id
+    ).first()
+    
+    if not payout:
+        raise HTTPException(404, "Payout not found")
+        
+    payout.status = "paid"
+    db.commit()
+    return {"status": "success"}

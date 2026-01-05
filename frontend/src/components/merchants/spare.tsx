@@ -1,127 +1,248 @@
 {
   /*import { useParams, Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { CheckCircle2, ArrowLeft, Store } from "lucide-react";
+try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: web3.utils.toHex(chain_id) }],
+        });
+      } catch (switchError: any) {
+        if (switchError.code === 4902) {
+          try {
+            const networkParams = {
+              chainId: web3.utils.toHex(1), // Chain ID 1 = Ethereum Mainnet
+              chainName: "Ethereum Mainnet",
+              nativeCurrency: {
+                name: "Ether",
+                symbol: "ETH",
+                decimals: 18,
+              },
+              rpcUrls: ["https://eth.llamarpc.com"],
+              blockExplorerUrls: ["https://etherscan.io"],
+            };
 
-const Storefront = () => {
-  const { merchantId } = useParams();
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [networkParams],
+            });
+          } catch (addError) {
+            console.error("Failed to add network:", addError);
+            alert("Could not add the network to your wallet.");
+            return;
+          }
+        } else {
+          console.error("Failed to switch network:", switchError);
+          alert("Failed to switch network. Please switch manually.");
+          return;
+        }
+      }
 
-  // In a real app, we'd fetch merchant data by merchantId
-  // For now, we use the local store
-  const merchantName = "Anonymous Merchant";
-  interface Product {
-    id: string;
-    name: string;
-    price: number;
-    description?: string;
-  }
 
-  const merchantProducts: Product[] = [];
+
+
+
+
+
+
+
+
+
+import { motion, AnimatePresence } from "framer-motion";
+import { X, ShieldAlert, Zap } from "lucide-react";
+import { useState } from "react";
+import Mnee from 'mnee-sdk';
+
+type Split = {
+  wallet_address: string;
+  percentage: number;
+};
+
+type Product = {
+  id: number;
+  product_name: string;
+  price: number;
+  splits: Split[];
+};
+
+type PurchaseModalProps = {
+  product: Product | null;
+  slug: string;
+  onClose: () => void;
+};
+
+const PurchaseModal = ({ product, slug, onClose }: PurchaseModalProps) => {
+  const [quantity, setQuantity] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [senderWif, setSenderWif] = useState(""); // User must provide WIF to sign
+
+  if (!product) return null;
+  
+  const totalAmount = product.price * quantity;
+
+  const makePurchase = async () => {
+    if (!senderWif) {
+      alert("Please enter a WIF (Private Key) to sign the transaction.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const recipients = product.splits.map((split) => ({
+        address: split.wallet_address,
+        amount: parseFloat((totalAmount * (split.percentage / 100)).toFixed(5)),
+      }));
+
+      
+      const response = await Mnee.transfer(recipients, senderWif);
+      
+      console.log('Transfer result:', response);
+
+      const confirmRes = await fetch("http://localhost:8000/api/confirm-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tx_hash: response.ticketId || "test_hash", 
+          product_id: product.id,
+          quantity: quantity,
+          slug: slug
+        }),
+      });
+
+      if (!confirmRes.ok) {
+        console.warn("Payment succeeded but backend sync failed");
+      }
+
+      alert(`Payment Successful! Ticket ID: ${response.ticketId}`);
+      onClose();
+
+    } catch (err) {
+      console.error("Payment error:", err);
+      alert("Payment failed. Check console for details.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-background grid-pattern">
-      {/* Header /}
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <Link
-              to="/"
-              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="text-sm">Back</span>
-            </Link>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded border-2 border-border flex items-center justify-center bg-secondary">
-                <Store className="w-5 h-5 text-foreground" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-foreground tracking-tight">
-                  {merchantName}
-                </h1>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
-                  <span className="text-xs text-muted-foreground font-mono">
-                    VERIFIED STREAM
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="w-16" /> {/* Spacer for alignment *}
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content *}
-      <main className="max-w-6xl mx-auto px-6 py-12">
-        {/* Title Section /}
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+          onClick={(e) => e.stopPropagation()}
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          className="relative w-full max-w-md border-2 border-emerald-800 bg-white p-6 shadow-2xl"
         >
-          <p className="text-sm font-mono text-muted-foreground mb-2">
-            MERCHANT_ID: {merchantId || "local"}
-          </p>
-          <h2 className="text-3xl font-bold text-foreground tracking-tight mb-2">
-            Available Streams
-          </h2>
-          <p className="text-muted-foreground">
-            Select a product to initialize programmable payment
-          </p>
-        </motion.div>
-
-        {/* Products Grid /}
-        {merchantProducts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {merchantProducts.map((product) => (
-              <div
-                key={product.id}
-                //product={product}
-                //index={index}
-              />
-            ))}
-          </div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-20 border-2 border-dashed border-border"
+          {/* Close *}
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 text-emerald-700 hover:text-emerald-900"
           >
-            <Store className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              No Active Streams
-            </h3>
-            <p className="text-muted-foreground text-sm">
-              This merchant hasn't deployed any revenue streams yet.
-            </p>
-          </motion.div>
-        )}
+            <X />
+          </button>
 
-        {/* Footer Info /}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="mt-16 text-center"
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-2 border border-border bg-secondary/50 text-xs text-muted-foreground font-mono">
-            <span className="w-2 h-2 bg-accent rounded-full animate-pulse" />
-            SPLITSTREAM PROTOCOL v1.0
+          <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Zap className="text-lime-500 fill-lime-500" />
+            Instant Purchase
+          </h3>
+
+          {/* Product Info /}
+          <div className="mb-4 bg-gray-50 p-4 border border-gray-100 rounded-sm">
+            <div className="flex justify-between mb-1">
+              <span className="font-mono text-sm text-emerald-700/60">Item</span>
+              <span className="font-bold text-emerald-900">{product.product_name}</span>
+            </div>
+            <div className="flex justify-between items-baseline">
+              <span className="font-mono text-sm text-emerald-700/60">Price</span>
+              <span className="text-2xl font-bold text-emerald-600">{product.price} <span className="text-xs text-emerald-400">MNEE</span></span>
+            </div>
           </div>
+
+          {/* Split Visualization (Optional but cool) /}
+          <div className="mb-4 text-xs text-gray-400 font-mono px-2">
+            <p className="mb-1 uppercase tracking-wider">Payment Distribution:</p>
+            <div className="flex h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                {product.splits.map((s, i) => (
+                    <div key={i} style={{width: `${s.percentage}%`}} className={`${i%2===0 ? 'bg-emerald-500' : 'bg-lime-400'}`} />
+                ))}
+            </div>
+            <div className="flex justify-between mt-1">
+                <span>{product.splits.length} Recipients</span>
+                <span>100% Split</span>
+            </div>
+          </div>*/
+}
+
+{
+  /* Quantity *}
+          <div className="mb-6 flex items-center justify-between border-y border-gray-100 py-4">
+             <span className="font-mono text-sm text-emerald-700/60">Quantity</span>
+             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 font-bold rounded"
+              >
+                −
+              </button>
+              <span className="w-8 text-center font-bold">{quantity}</span>
+              <button
+                onClick={() => setQuantity((q) => q + 1)}
+                className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 font-bold rounded"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          {/* WIF Input *}
+          <div className="mb-6">
+            <label className="block text-xs font-bold text-emerald-800 uppercase mb-2 flex items-center gap-2">
+                Sender WIF (Private Key)
+            </label>
+            <input 
+                type="password"
+                value={senderWif}
+                onChange={(e) => setSenderWif(e.target.value)}
+                placeholder="Enter WIF to sign..."
+                className="w-full p-3 border-2 border-emerald-100 focus:border-emerald-500 outline-none font-mono text-sm rounded bg-emerald-50/30"
+            />
+            <div className="flex items-start gap-1.5 mt-2 text-[10px] text-amber-600 bg-amber-50 p-2 rounded">
+                <ShieldAlert className="w-3 h-3 shrink-0 mt-0.5" />
+                <p>For testing only. Never paste your mainnet private key into untrusted applications.</p>
+            </div>
+          </div>
+
+          {/* Total & Pay /}
+          <div className="space-y-3">
+             <div className="flex justify-between items-center px-1">
+                <span className="font-bold text-emerald-900">Total to Pay</span>
+                <span className="font-mono font-bold text-xl">{totalAmount.toFixed(2)} MNEE</span>
+             </div>
+
+             <button
+                onClick={makePurchase}
+                disabled={isSubmitting || !senderWif}
+                className={`w-full py-3.5 rounded-lg font-bold shadow-lg transition-all
+                ${senderWif && !isSubmitting 
+                    ? "bg-gradient-to-r from-emerald-600 to-lime-500 text-white hover:scale-[1.01] hover:shadow-emerald-500/20" 
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}
+             >
+                {isSubmitting ? "Broadcasting to 1Sat..." : "Pay & Split Instantly"}
+             </button>
+          </div>
+
         </motion.div>
-      </main>
-    </div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 
-export default Storefront;
-
-
-
-
-const bytes = CryptoJS.AES.decrypt(encryptedPrivateKey, "my-temporary-secret-key");
-const originalKey = bytes.toString(CryptoJS.enc.Utf8);
+export default PurchaseModal;
 
 
 #RPC_URL=https://rpc.sepolia.org
