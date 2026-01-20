@@ -18,7 +18,7 @@ CHAIN_ID = os.getenv("CHAIN_ID")
 if not CHAIN_ID:
     print("Chain ID hasn't been gotten")
 
-
+ 
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
 MNEE_TOKEN = Web3.to_checksum_address(MNEE_TOKEN_ADDRESS)
 CHAIN_ID = int(CHAIN_ID)

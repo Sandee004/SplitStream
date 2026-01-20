@@ -16,13 +16,13 @@ function truncateHash(hash: string): string {
   return `${hash.slice(0, 10)}...${hash.slice(-8)}`;
 }
 
-interface Transaction {
-  id: number;
+export interface Transaction {
+  id: string | number; // Allow both
   txHash: string;
   productName: string;
   amount: number;
   status?: string;
-  bought_at: string;
+  timestamp: string | Date; // Renamed from 'bought_at' to match Dashboard
 }
 
 export default function TransactionTable({
@@ -109,7 +109,7 @@ export default function TransactionTable({
                 {/* 5. Time (Restored!) */}
                 <td className="px-6 py-4 text-right">
                   <span className="font-mono text-xs text-[#065f46]/50">
-                    {formatTimeAgo(tx.bought_at)}
+                    {formatTimeAgo(tx.timestamp)}
                   </span>
                 </td>
               </tr>

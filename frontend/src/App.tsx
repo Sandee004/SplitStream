@@ -8,6 +8,8 @@ import ActiveStreams from "./components/merchants/active-streams";
 import DashboardLayout from "./components/merchants/dashboard-layout";
 import History from "./components/merchants/history";
 import Storefront from "./components/users/storefront";
+import PayoutsSection from "./components/merchants/payouts/payouts";
+import Payouts from "./components/merchants/orderz";
 
 export default function App() {
   return (
@@ -21,8 +23,10 @@ export default function App() {
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<DashboardPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="payouts" element={<PayoutsSection />} />
           <Route path="streams" element={<ActiveStreams />} />
           <Route path="history" element={<History />} />
+          <Route path="orderz" element={<Payouts />} />
         </Route>
 
         <Route path="/store/:slug" element={<Storefront />} />
