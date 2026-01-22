@@ -86,8 +86,8 @@ export default function ProductModal({
     if (ownerSplit && ownerSplit.percentage >= 20) {
       setSplits((prev) =>
         prev.map((s) =>
-          s.isOwner ? { ...s, percentage: s.percentage - 20 } : s
-        )
+          s.isOwner ? { ...s, percentage: s.percentage - 20 } : s,
+        ),
       );
       newSplit.percentage = 20;
     }
@@ -103,14 +103,14 @@ export default function ProductModal({
         .map((s) =>
           s.isOwner
             ? { ...s, percentage: s.percentage + splitToRemove.percentage }
-            : s
-        )
+            : s,
+        ),
     );
   };
 
   const handleUpdateSplit = (id: string, updates: Partial<any>) => {
     setSplits((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
+      prev.map((s) => (s.id === id ? { ...s, ...updates } : s)),
     );
   };
 
@@ -147,11 +147,11 @@ export default function ProductModal({
     try {
       setIsSubmitting(true);
 
-      let url = "http://localhost:8000/api/add-product";
+      let url = "https://splitstream.onrender.com/api/add-product";
       let method = "POST";
 
       if (product) {
-        url = `http://localhost:8000/api/update-product/${product.id}`;
+        url = `https://splitstream.onrender.com/api/update-product/${product.id}`;
         method = "PUT";
       }
 
@@ -232,8 +232,8 @@ export default function ProductModal({
                 step > 1
                   ? "bg-[#a8e6cf] text-[#1a3a2a]"
                   : step === 1
-                  ? "bg-[#1a3a2a] text-white"
-                  : "bg-[#1a3a2a]/20"
+                    ? "bg-[#1a3a2a] text-white"
+                    : "bg-[#1a3a2a]/20"
               }`}
             >
               {step > 1 ? <Check className="w-4 h-4" /> : "1"}
@@ -361,8 +361,8 @@ export default function ProductModal({
                         split.isOwner
                           ? "bg-[#1a3a2a]"
                           : idx % 2 === 0
-                          ? "bg-[#a8e6cf]"
-                          : "bg-[#70c49b]"
+                            ? "bg-[#a8e6cf]"
+                            : "bg-[#70c49b]"
                       }`}
                     />
                   ))}

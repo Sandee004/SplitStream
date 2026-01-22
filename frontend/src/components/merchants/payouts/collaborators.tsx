@@ -29,7 +29,7 @@ export default function CollaboratorsCard({ onUpdateCount }: Props) {
 
       if (!token) return;
 
-      const res = await fetch("http://localhost:8000/api/products", {
+      const res = await fetch("https://splitstream.onrender.com/api/products", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

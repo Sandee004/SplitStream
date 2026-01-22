@@ -96,7 +96,7 @@ const PurchaseModal = ({ product, slug, onClose }: PurchaseModalProps) => {
       
       console.log('Transfer result:', response);
 
-      const confirmRes = await fetch("http://localhost:8000/api/confirm-payment", {
+      const confirmRes = await fetch("https://splitstream.onrender.com/api/confirm-payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

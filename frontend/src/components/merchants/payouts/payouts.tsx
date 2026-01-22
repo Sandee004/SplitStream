@@ -16,7 +16,7 @@ export default function PayoutsSection() {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      const res = await fetch("http://localhost:8000/api/payouts", {
+      const res = await fetch("https://splitstream.onrender.com/api/payouts", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

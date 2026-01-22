@@ -28,7 +28,7 @@ export default function SettingsPage() {
         return;
       }
 
-      const res = await fetch("http://localhost:8000/api/profile", {
+      const res = await fetch("https://splitstream.onrender.com/api/profile", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -67,7 +67,7 @@ export default function SettingsPage() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8000/api/profile", {
+      const res = await fetch("https://splitstream.onrender.com/api/profile", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -104,17 +104,20 @@ export default function SettingsPage() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8000/api/profile/password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const res = await fetch(
+        "https://splitstream.onrender.com/api/profile/password",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            old_password: oldPassword,
+            new_password: newPassword,
+          }),
         },
-        body: JSON.stringify({
-          old_password: oldPassword,
-          new_password: newPassword,
-        }),
-      });
+      );
 
       if (!res.ok) throw new Error("Failed to update password");
 
@@ -134,13 +137,16 @@ export default function SettingsPage() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8000/api/delete-account", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const res = await fetch(
+        "https://splitstream.onrender.com/api/delete-account",
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!res.ok) throw new Error("Failed to delete account");
 

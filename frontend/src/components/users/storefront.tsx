@@ -30,7 +30,9 @@ const Storefront = () => {
     if (!slug) return;
     try {
       setIsLoading(true);
-      const res = await fetch(`http://localhost:8000/api/store/${slug}`);
+      const res = await fetch(
+        `https://splitstream.onrender.com/api/store/${slug}`,
+      );
       if (!res.ok) throw new Error("Failed to load store products");
       const data = await res.json();
       setMerchantProducts(data);

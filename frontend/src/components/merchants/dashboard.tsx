@@ -51,13 +51,16 @@ export default function DashboardPage() {
         return;
       }
 
-      const res = await fetch("http://localhost:8000/api/dashboard", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const res = await fetch(
+        "https://splitstream.onrender.com/api/dashboard",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!res.ok) {
         if (res.status === 401) {
@@ -87,7 +90,7 @@ export default function DashboardPage() {
                 isOwner: s.isOwner || false,
               }))
             : [],
-        }))
+        })),
       );
 
       setTransactions(
@@ -99,7 +102,7 @@ export default function DashboardPage() {
           productName: sale.item_sold || "Unknown",
           amount: sale.earned || 0,
           timestamp: sale.date ? new Date(sale.date) : new Date(),
-        }))
+        })),
       );
 
       setTotalRevenue(data.stats?.total_revenue || 0);
@@ -130,7 +133,7 @@ export default function DashboardPage() {
 
     try {
       const token = localStorage.getItem("token");
-      await fetch(`http://localhost:8000/api/delete-product/${id}`, {
+      await fetch(`https://splitstream.onrender.com/api/delete-product/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

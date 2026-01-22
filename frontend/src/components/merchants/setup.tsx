@@ -114,7 +114,7 @@ export default function SetupPage() {
     }
 
     try {
-      const res = await fetch("http://localhost:8000/api/setup", {
+      const res = await fetch("https://splitstream.onrender.com/api/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, email, password, walletAddress }),

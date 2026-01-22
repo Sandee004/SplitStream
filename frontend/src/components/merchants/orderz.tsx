@@ -44,7 +44,7 @@ export default function Payouts() {
   const fetchPayouts = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8000/api/payouts", {
+      const res = await fetch("https://splitstream.onrender.com/api/payouts", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -87,7 +87,7 @@ export default function Payouts() {
       // D. Send Transaction
       const contract = new web3.eth.Contract(
         ERC20_ABI as any,
-        MNEE_TOKEN_ADDRESS
+        MNEE_TOKEN_ADDRESS,
       );
       const amountWei = web3.utils.toWei(payout.amount.toString(), "ether");
 
@@ -99,7 +99,7 @@ export default function Payouts() {
       if (tx.transactionHash) {
         const token = localStorage.getItem("token");
         await fetch(
-          `http://localhost:8000/api/payouts/${payout.id}/mark-paid`,
+          `https://splitstream.onrender.com/api/payouts/${payout.id}/mark-paid`,
           {
             method: "POST",
             headers: {
@@ -107,7 +107,7 @@ export default function Payouts() {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ tx_hash: tx.transactionHash }),
-          }
+          },
         );
 
         // Remove from list or mark as paid locally

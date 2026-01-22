@@ -55,11 +55,14 @@ const History = () => {
         return;
       }
 
-      const res = await fetch("http://localhost:8000/api/transactions", {
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const res = await fetch(
+        "https://splitstream.onrender.com/api/transactions",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!res.ok) {
         if (res.status === 401) {

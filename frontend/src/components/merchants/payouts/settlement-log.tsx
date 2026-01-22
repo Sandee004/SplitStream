@@ -82,7 +82,7 @@ export default function SettlementLog({ history = [], onSuccess }: Props) {
   const handleBackendUpdate = async (txId: string, txHash: string) => {
     try {
       const token = localStorage.getItem("token");
-      await fetch("http://localhost:8000/api/mark-paid", {
+      await fetch("https://splitstream.onrender.com/api/mark-paid", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

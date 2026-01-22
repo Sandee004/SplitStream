@@ -54,7 +54,7 @@ export default function ActiveStreams() {
         return;
       }
 
-      const res = await fetch("http://localhost:8000/api/products", {
+      const res = await fetch("https://splitstream.onrender.com/api/products", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -121,7 +121,7 @@ export default function ActiveStreams() {
 
     try {
       const token = localStorage.getItem("token");
-      await fetch(`http://localhost:8000/api/delete-product/${id}`, {
+      await fetch(`https://splitstream.onrender.com/api/delete-product/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

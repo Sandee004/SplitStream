@@ -45,9 +45,12 @@ export default function DashboardLayout() {
           return;
         }
 
-        const res = await fetch("http://localhost:8000/api/dashboard", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(
+          "https://splitstream.onrender.com/api/dashboard",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
 
         if (!res.ok) {
           if (res.status === 401) {
@@ -65,7 +68,7 @@ export default function DashboardLayout() {
           };
           setMerchant(merchantData);
           const slug = data.merchant_profile.slug;
-          setStoreLink(`${window.location.origin}/store/${slug}`);
+          setStoreLink(`https://splitstream.onrender.com/store/${slug}`);
           localStorage.setItem("Merchant Data", JSON.stringify(merchantData));
         }
       } catch (error) {
@@ -167,7 +170,7 @@ export default function DashboardLayout() {
                 <p className="text-[10px] text-[#1a3a2a]/50 font-mono truncate bg-[#1a3a2a]/5 px-1.5 py-0.5 rounded w-fit mt-1">
                   {merchant.wallet
                     ? `${merchant.wallet.slice(0, 6)}...${merchant.wallet.slice(
-                        -4
+                        -4,
                       )}`
                     : "No Wallet"}
                 </p>

@@ -79,15 +79,18 @@ const PurchaseModal = ({
       }
 
       // 3. Initiate Transaction in Backend
-      const res = await fetch("http://localhost:8000/api/make-purchase", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          product_id: product.id,
-          quantity,
-          slug,
-        }),
-      });
+      const res = await fetch(
+        "https://splitstream.onrender.com/api/make-purchase",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            product_id: product.id,
+            quantity,
+            slug,
+          }),
+        },
+      );
 
       if (!res.ok) throw new Error("Could not initiate purchase");
 
@@ -106,7 +109,7 @@ const PurchaseModal = ({
       const txHash = tx.transactionHash;
 
       const confirmRes = await fetch(
-        "http://localhost:8000/api/confirm-payment",
+        "https://splitstream.onrender.com/api/confirm-payment",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
