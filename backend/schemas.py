@@ -68,6 +68,19 @@ class TransactionOut(BaseModel):
     class Config:
         from_attributes = True
 
+class PayoutOut(BaseModel):
+    id: str # ID needs to be string for frontend key
+    to: str # "Collaborator 0x12..."
+    wallet: str
+    amount: float
+    product: str
+    time: str
+    status: str # "PENDING" or "SETTLED"
+
+class MarkPaidRequest(BaseModel):
+    tx_hash: str # This corresponds to the payout ID from the frontend
+    confirmation_hash: str # The blockchain TX hash
+
 class PurchaseRequest(BaseModel):
     product_id: int
     quantity: int
@@ -75,7 +88,4 @@ class PurchaseRequest(BaseModel):
 
 class ConfirmPaymentRequest(BaseModel):
     purchase_id: int
-    tx_hash: str
-
-class MarkPaidRequest(BaseModel):
     tx_hash: str

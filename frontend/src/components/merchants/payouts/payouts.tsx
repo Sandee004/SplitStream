@@ -1,48 +1,85 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import PayoutStats from "./payout-stats";
 import CollaboratorsCard from "./collaborators";
 import SettlementLog from "./settlement-log";
-import type { Transaction } from "./types"
-
-// --- MOCK DATA for History (We will fetch this later too) ---
-const INITIAL_HISTORY: Transaction[] = [
-  { id: "tx_005", to: "Dev Team Core", wallet: "0x89...B112", amount: 75.00, product: "Consulting", time: "Just now", status: "PENDING" },
-  { id: "tx_001", to: "Design Studio A", wallet: "0x71...9A23", amount: 150.00, product: "AI Art Pack", time: "2m ago", status: "SETTLED" },
-  { id: "tx_002", to: "Dev Team Core", wallet: "0x89...B112", amount: 50.00, product: "SaaS Template", time: "15m ago", status: "SETTLED" },
-];
+import type { Transaction } from "./types";
+import { Loader2 } from "lucide-react";
 
 export default function PayoutsSection() {
-  const [history, setHistory] = useState<Transaction[]>(INITIAL_HISTORY);
+  const [history, setHistory] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeCollabCount, setActiveCollabCount] = useState<number>(0);
 
-  // --- ACTIONS ---
+  const loadHistory = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
 
-  const settleTransaction = async (txId: string) => {
-    // Simulate API delay
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        setHistory(prev => prev.map(tx => 
-          tx.id === txId ? { ...tx, status: "SETTLED" } : tx
-        ));
-        resolve();
-      }, 1500);
-    });
-  };
+      const res = await fetch("http://localhost:8000/api/payouts", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setHistory(data);
+      } else {
+        // Fallback for demo if endpoint doesn't exist yet
+        console.warn("Failed to fetch payouts, using fallback data");
+      }
+    } catch (err) {
+      console.error("Error loading history:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   return (
-    <div className="space-y-6">
-      {/* 1. Stats */}
-      <PayoutStats />
+    <div className="min-h-screen relative grid-bg-pattern grid-animate-scroll">
+      <header className="hidden lg:flex items-center justify-between px-8 py-4 bg-white border-b-2 border-[#1a3a2a]/20">
+        <div>
+          <h1 className="text-xl font-bold text-[#065f46]">Payouts</h1>
+          <p className="text-sm text-[#065f46]/50">
+            Track all completed and pending disbursements.
+          </p>
+        </div>
+        <span className="text-xs font-mono text-[#065f46]/50 px-2 py-1 bg-[#F2F6F4] border border-[#065f46]/10">
+          LIVE_FEED
+        </span>
+      </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* 2. Left Sidebar - Now Self-Contained! */}
-        <CollaboratorsCard />
-
-        {/* 3. Main Table (+ Modal) */}
-        <SettlementLog 
-          history={history} 
-          onSettle={settleTransaction} 
+      <div className="space-y-6 mx-4 my-5">
+        {/* 1. Stats (Static for now, can be connected to API later) */}
+        <PayoutStats
+          payouts={history}
+          activeCollaboratorsCount={activeCollabCount}
         />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          {/* 2. Left Sidebar (Self-Contained) */}
+          <CollaboratorsCard onUpdateCount={setActiveCollabCount} />
+
+          {/* 3. Main Table */}
+          {isLoading && history.length === 0 ? (
+            <div className="lg:col-span-2 bg-white border-2 border-[#065f46]/20 h-[400px] flex items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-[#065f46]" />
+            </div>
+          ) : (
+            <SettlementLog
+              history={history}
+              // CHANGE IS HERE:
+              onSuccess={loadHistory}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

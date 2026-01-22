@@ -25,7 +25,6 @@ export default function SettingsPage() {
 
       const token = localStorage.getItem("token");
       if (!token) {
-        navigate("/login");
         return;
       }
 
@@ -46,7 +45,6 @@ export default function SettingsPage() {
       }
 
       const data = await res.json();
-      console.log(data);
       setUsername(data.username);
       setEmail(data.email);
       setWalletAddress(data.wallet_address);

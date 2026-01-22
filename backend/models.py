@@ -65,3 +65,4 @@ class PendingPayout(Base):
     amount = Column(Float)
     status = Column(String, default="pending") # pending, paid
     transaction_source_id = Column(Integer, ForeignKey("transactions.id"))
+    transaction_source = relationship("Transactions")

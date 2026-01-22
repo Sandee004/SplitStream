@@ -8,32 +8,60 @@ import ActiveStreams from "./components/merchants/active-streams";
 import DashboardLayout from "./components/merchants/dashboard-layout";
 import History from "./components/merchants/history";
 import Storefront from "./components/users/storefront";
+// Make sure this path matches where you saved the Payouts index file
+// If you used the folder structure, it might be "./components/payouts/index"
 import PayoutsSection from "./components/merchants/payouts/payouts";
 import Payouts from "./components/merchants/orderz";
 
+// --- 1. NEW IMPORTS FOR BLOCKCHAIN ---
+import { createConfig, http, WagmiProvider } from "wagmi";
+import { mainnet } from "wagmi/chains";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+// --- 2. CONFIGURATION ---
+// This connects your app to the Ethereum network (Mainnet)
+// You can add 'sepolia' or 'polygon' here if testing elsewhere.
+export const config = createConfig({
+  chains: [mainnet],
+  transports: {
+    [mainnet.id]: http(), // Uses public RPC
+  },
+});
+
+// --- 3. QUERY CLIENT ---
+const queryClient = new QueryClient();
+
 export default function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<SplashPage />} />
-        <Route path="/setup" element={<Setup />} />
-        <Route path="/login" element={<LoginPage />} />
+    // --- 4. WRAP EVERYTHING ---
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <Routes>
+            <Route path="/" element={<SplashPage />} />
+            <Route path="/setup" element={<Setup />} />
+            <Route path="/login" element={<LoginPage />} />
 
-        {/* ALL DASHBOARD PAGES inside the layout */}
-        <Route path="/dashboard" element={<DashboardLayout />}>
-          <Route index element={<DashboardPage />} />
-          <Route path="settings" element={<SettingsPage />} />
-          <Route path="payouts" element={<PayoutsSection />} />
-          <Route path="streams" element={<ActiveStreams />} />
-          <Route path="history" element={<History />} />
-          <Route path="orderz" element={<Payouts />} />
-        </Route>
+            {/* ALL DASHBOARD PAGES inside the layout */}
+            <Route path="/dashboard" element={<DashboardLayout />}>
+              <Route index element={<DashboardPage />} />
+              <Route path="settings" element={<SettingsPage />} />
 
-        <Route path="/store/:slug" element={<Storefront />} />
+              {/* This is your new Settlement UI */}
+              <Route path="payouts" element={<PayoutsSection />} />
 
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </Router>
+              <Route path="streams" element={<ActiveStreams />} />
+              <Route path="history" element={<History />} />
+              <Route path="orderz" element={<Payouts />} />
+            </Route>
+
+            <Route path="/store/:slug" element={<Storefront />} />
+
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Router>
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 }
 

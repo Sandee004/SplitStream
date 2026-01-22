@@ -106,7 +106,7 @@ export default function LoginPage() {
                 placeholder="e.g., sandee_dev"
                 className={`
                   w-full px-4 py-3 bg-gray-100 text-emerald-800 
-                  border-2 transition-colors 
+                  border-2 transition-colors focus:outline-none focus:border-emerald-800
                   ${
                     errors.username ? "border-red-600" : "border-emerald-800/30"
                   }
@@ -135,7 +135,7 @@ export default function LoginPage() {
                   }}
                   className={`
                   w-full px-4 py-3 bg-gray-100 text-emerald-800 
-                  border-2 transition-colors 
+                  border-2 transition-colors focus:outline-none focus:border-emerald-800
                   ${
                     errors.password ? "border-red-600" : "border-emerald-800/30"
                   }

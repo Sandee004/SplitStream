@@ -5,7 +5,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Collaborator } from "./types";
 import { useNavigate } from "react-router-dom";
 
-export default function CollaboratorsCard() {
+// NEW PROP INTERFACE
+interface Props {
+  onUpdateCount?: (count: number) => void;
+}
+
+export default function CollaboratorsCard({ onUpdateCount }: Props) {
   const navigate = useNavigate();
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -15,6 +20,13 @@ export default function CollaboratorsCard() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem("token");
+      const merchantData = JSON.parse(
+        localStorage.getItem("merchantData") || "{}",
+      );
+      const ownerWallet = merchantData.wallet
+        ? merchantData.wallet.toLowerCase()
+        : "";
+
       if (!token) return;
 
       const res = await fetch("http://localhost:8000/api/products", {
@@ -28,19 +40,19 @@ export default function CollaboratorsCard() {
       if (!res.ok) throw new Error("Failed to fetch data");
 
       const products = await res.json();
-
       const uniqueCollabs = new Map<string, Collaborator>();
 
       products.forEach((prod: any) => {
         if (!prod.splits) return;
 
         prod.splits.forEach((split: any) => {
-          // FIX: Trust the API! If is_owner is true, skip this split.
-          if (split.is_owner) return;
+          if (split.is_owner) return; // Trust the API flag
 
           const wallet = split.wallet_address || "";
 
-          // Deduplication: Only add if we haven't seen this wallet before
+          // Fallback check just in case
+          if (wallet.toLowerCase() === ownerWallet) return;
+
           if (!uniqueCollabs.has(wallet)) {
             uniqueCollabs.set(wallet, {
               id: split.id.toString(),
@@ -53,13 +65,19 @@ export default function CollaboratorsCard() {
         });
       });
 
-      setCollaborators(Array.from(uniqueCollabs.values()));
+      const finalCollabs = Array.from(uniqueCollabs.values());
+      setCollaborators(finalCollabs);
+
+      // REPORT THE COUNT UP TO THE PARENT
+      if (onUpdateCount) {
+        onUpdateCount(finalCollabs.length);
+      }
     } catch (err) {
       console.error("Error loading collaborators:", err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [onUpdateCount]); // Add dependency
 
   useEffect(() => {
     loadCollaborators();
@@ -68,7 +86,7 @@ export default function CollaboratorsCard() {
   return (
     <>
       {/* SIDEBAR CARD */}
-      <div className="lg:col-span-1 bg-white border-2 border-[#065f46]/20 flex flex-col">
+      <div className="lg:col-span-1 bg-white border-2 border-[#065f46]/20 flex flex-col h-fit">
         <div className="px-5 py-4 border-b border-[#065f46]/10 bg-[#F2F6F4]/30">
           <h3 className="text-sm font-bold text-[#065f46] flex items-center gap-2">
             <Users className="w-4 h-4" />
@@ -122,7 +140,7 @@ export default function CollaboratorsCard() {
         </div>
       </div>
 
-      {/* MODAL */}
+      {/* MODAL (Keep as is) */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#065f46]/20 backdrop-blur-sm">

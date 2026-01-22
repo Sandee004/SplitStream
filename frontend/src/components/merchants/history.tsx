@@ -19,7 +19,7 @@ function truncateHash(hash: string): string {
 function getMonthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
     2,
-    "0"
+    "0",
   )}`;
 }
 
@@ -52,7 +52,6 @@ const History = () => {
 
       const token = localStorage.getItem("token");
       if (!token) {
-        navigate("/login");
         return;
       }
 
@@ -71,7 +70,6 @@ const History = () => {
       }
 
       const data = await res.json();
-      console.log(data);
 
       const mapped: Transaction[] = data.map((tx: any) => ({
         id: tx.id.toString(),
@@ -98,7 +96,7 @@ const History = () => {
   };
 
   const availableMonths = Array.from(
-    new Set(transactions.map((tx) => getMonthKey(tx.timestamp)))
+    new Set(transactions.map((tx) => getMonthKey(tx.timestamp))),
   ).sort((a, b) => b.localeCompare(a));
 
   const filteredTransactions = transactions.filter((tx) => {
@@ -142,7 +140,7 @@ const History = () => {
       </header>
 
       {/* FILTER BAR */}
-      <div className="my-5 flex flex-col mx-4 sm:flex-row gap-4">
+      <div className="pt-18 lg:pt-3 my-5 flex flex-col mx-4 sm:flex-row gap-4">
         {/* MONTH FILTER */}
         <select
           value={selectedMonth}

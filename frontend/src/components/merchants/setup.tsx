@@ -45,7 +45,7 @@ export default function SetupPage() {
       encoder.encode(password),
       "PBKDF2",
       false,
-      ["deriveKey"]
+      ["deriveKey"],
     );
 
     const aesKey = await crypto.subtle.deriveKey(
@@ -58,17 +58,17 @@ export default function SetupPage() {
       keyMaterial,
       { name: "AES-GCM", length: 256 },
       false,
-      ["encrypt", "decrypt"]
+      ["encrypt", "decrypt"],
     );
 
     const encryptedPrivateKeyBuffer = await crypto.subtle.encrypt(
       { name: "AES-GCM", iv },
       aesKey,
-      encoder.encode(wallet.privateKey)
+      encoder.encode(wallet.privateKey),
     );
 
     const encryptedPrivateKey = btoa(
-      String.fromCharCode(...new Uint8Array(encryptedPrivateKeyBuffer))
+      String.fromCharCode(...new Uint8Array(encryptedPrivateKeyBuffer)),
     );
 
     return {
@@ -192,7 +192,7 @@ export default function SetupPage() {
                 placeholder="e.g., sandee_dev"
                 className={`
                   w-full px-4 py-3 bg-gray-100 text-emerald-800 
-                  border-2 transition-colors 
+                  border-2 transition-colors focus:outline-none focus:border-emerald-800
                   ${
                     errors.username ? "border-red-600" : "border-emerald-800/30"
                   }
@@ -220,7 +220,7 @@ export default function SetupPage() {
                 placeholder="you@example.com"
                 className={`
                   w-full px-4 py-3 bg-gray-100 text-emerald-800 
-                  border-2 transition-colors 
+                  border-2 transition-colors focus:outline-none focus:border-emerald-800
                   ${errors.email ? "border-red-600" : "border-emerald-800/30"}
                 `}
               />
@@ -246,7 +246,7 @@ export default function SetupPage() {
                 placeholder="••••••••"
                 className={`
                   w-full px-4 py-3 bg-gray-100 text-emerald-800 
-                  border-2 transition-colors 
+                  border-2 transition-colors focus:outline-none focus:border-emerald-800
                   ${
                     errors.password ? "border-red-600" : "border-emerald-800/30"
                   }
@@ -281,14 +281,14 @@ export default function SetupPage() {
                   // Added 'pr-10' to prevent text overlapping the icon
                   className={`
                     w-full px-4 py-3 pr-10 bg-gray-100 text-emerald-800 font-mono text-sm
-                    border-2 transition-colors disabled:opacity-60 
+                    border-2 transition-colors disabled:opacity-60 focus:outline-none focus:border-emerald-800
                     ${
                       // Logic: Red border if error OR explicitly invalid state
                       errors.walletAddress || isWalletValid === false
                         ? "border-red-600 focus:border-red-600"
                         : isWalletValid === true
-                        ? "border-emerald-600 focus:border-emerald-600"
-                        : "border-emerald-800/30"
+                          ? "border-emerald-600 focus:border-emerald-600"
+                          : "border-emerald-800/30"
                     }
                   `}
                 />
