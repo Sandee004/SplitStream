@@ -77,3 +77,4 @@ async def serve_react(full_path: str):
         "detail": "Please check console logs to see if 'npm run build' failed."
     }
 
+

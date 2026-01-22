@@ -1,5 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Pencil, Trash2, Users, DollarSign, Loader2 } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  Users,
+  DollarSign,
+  Loader2,
+  Crown,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ProductModal from "./product-modal";
@@ -32,9 +39,14 @@ export default function ActiveStreams() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const storedWallet = JSON.parse(
-        localStorage.getItem("merchantData") || "{}"
-      ).wallet;
+      const merchantData = JSON.parse(
+        localStorage.getItem("merchantData") || "{}",
+      );
+      // Normalize wallet for comparison
+      const storedWallet = merchantData.wallet
+        ? merchantData.wallet.toLowerCase()
+        : "";
+
       setMerchantWallet(storedWallet);
 
       if (!token) {
@@ -67,15 +79,21 @@ export default function ActiveStreams() {
           price: item.price,
           description: item.description || "",
           splits: item.splits
-            ? item.splits.map((s: any) => ({
-                id: s.id?.toString() || crypto.randomUUID(),
-                // FIX: Map API response to 'wallet_address'
-                wallet_address: s.wallet_address,
-                percentage: s.percentage,
-                isOwner: s.is_owner || false,
-              }))
+            ? item.splits.map((s: any) => {
+                const wallet = s.wallet_address || "";
+                // DOUBLE CHECK: Use API flag OR manual comparison
+                const isOwner =
+                  s.is_owner || wallet.toLowerCase() === storedWallet;
+
+                return {
+                  id: s.id?.toString() || crypto.randomUUID(),
+                  wallet_address: wallet,
+                  percentage: s.percentage,
+                  isOwner: isOwner,
+                };
+              })
             : [],
-        }))
+        })),
       );
     } catch (err) {
       console.error("Dashboard Fetch Error:", err);
@@ -146,7 +164,7 @@ export default function ActiveStreams() {
       </header>
 
       {/* GRID LAYOUT */}
-      <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+      <div className="mt-18 lg:mt-3 p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
         {streams.map((product) => (
           <div
             key={product.id}
@@ -191,8 +209,8 @@ export default function ActiveStreams() {
                       split.isOwner
                         ? "bg-[#1a3a2a]"
                         : idx % 2 === 0
-                        ? "bg-[#a8e6cf]"
-                        : "bg-[#70c49b]"
+                          ? "bg-[#a8e6cf]"
+                          : "bg-[#70c49b]"
                     }`}
                   />
                 ))}
@@ -205,14 +223,18 @@ export default function ActiveStreams() {
                     key={split.id}
                     className="flex items-center justify-between text-xs"
                   >
-                    <span className="font-mono text-[#1a3a2a]/60 truncate max-w-[60%]">
-                      {split.isOwner
-                        ? "You"
-                        : `${split.wallet_address.slice(
-                            0,
-                            6
-                          )}...${split.wallet_address.slice(-4)}`}
-                      {/* FIX: Updated render to use split.wallet_address */}
+                    <span className="font-mono text-[#1a3a2a]/60 truncate max-w-[60%] flex items-center gap-1">
+                      {split.isOwner ? (
+                        // BADGE UI FOR OWNER
+                        <span className="flex items-center gap-1 bg-[#1a3a2a] text-[#a8e6cf] px-1.5 py-0.5 rounded-[2px]">
+                          <Crown className="w-3 h-3" />
+                          <span className="font-bold text-[10px] tracking-wider">
+                            YOU
+                          </span>
+                        </span>
+                      ) : (
+                        `${split.wallet_address.slice(0, 6)}...${split.wallet_address.slice(-4)}`
+                      )}
                     </span>
                     <span className="font-mono text-[#1a3a2a] font-semibold">
                       {split.percentage}%

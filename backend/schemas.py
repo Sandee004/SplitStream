@@ -27,6 +27,7 @@ class SplitResponse(SplitSchema):
     id: int
     wallet_address: str
     percentage: int
+    is_owner: bool
     
     class Config:
         from_attributes = True
@@ -42,6 +43,7 @@ class ProductResponse(BaseModel):
     price: float
     merchant_id: int
     splits: List[SplitResponse]
+    
 
     class Config:
         from_attributes = True
